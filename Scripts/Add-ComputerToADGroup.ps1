@@ -56,7 +56,7 @@ $RetryDelaySeconds = 300
 
 $TsEnvironment = $null
 $LogPath = $null
-$LdapConnection = $null
+$script:LdapConnection = $null
 $script:NetworkCredential = $null
 $AdUserName = $null
 $AdPassword = $null
@@ -341,6 +341,35 @@ function Test-StopRetry {
     $false
 }
 
+function ConvertTo-NetworkCredential {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$AdUserName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AdPassword
+    )
+
+    $TrimmedUserName = $AdUserName.Trim()
+    if ([string]::IsNullOrWhiteSpace($TrimmedUserName)) {
+        throw "Task Sequence variable '$TsUserVariable' is empty."
+    }
+
+    $SeparatorIndex = $TrimmedUserName.IndexOf('\')
+    if ($SeparatorIndex -gt 0 -and $SeparatorIndex -lt ($TrimmedUserName.Length - 1)) {
+        $AdDomain = $TrimmedUserName.Substring(0, $SeparatorIndex)
+        $AdAccount = $TrimmedUserName.Substring($SeparatorIndex + 1)
+
+        if ([string]::IsNullOrWhiteSpace($AdDomain) -or [string]::IsNullOrWhiteSpace($AdAccount)) {
+            throw "AD account '$TrimmedUserName' is not in a valid DOMAIN\user format."
+        }
+
+        return [System.Net.NetworkCredential]::new($AdAccount, $AdPassword, $AdDomain)
+    }
+
+    [System.Net.NetworkCredential]::new($TrimmedUserName, $AdPassword)
+}
+
 function Invoke-GroupAssignment {
     param(
         [Parameter(Mandatory = $true)]
@@ -517,16 +546,7 @@ try {
     Write-GroupLog -Message "Using AD account: $AdUserName"
     Write-GroupLog -Message 'Password was read from Task Sequence variable: ********'
 
-    $SeparatorIndex = $AdUserName.IndexOf('\')
-
-    if ($SeparatorIndex -gt 0 -and $SeparatorIndex -lt ($AdUserName.Length - 1)) {
-        $AdDomain = $AdUserName.Substring(0, $SeparatorIndex)
-        $AdAccount = $AdUserName.Substring($SeparatorIndex + 1)
-        $script:NetworkCredential = New-Object System.Net.NetworkCredential($AdAccount, $AdPassword, $AdDomain)
-    }
-    else {
-        $script:NetworkCredential = New-Object System.Net.NetworkCredential($AdUserName, $AdPassword)
-    }
+    $script:NetworkCredential = ConvertTo-NetworkCredential -AdUserName $AdUserName -AdPassword $AdPassword
 
     $ComputerSystem = Get-CimInstance Win32_ComputerSystem
     if (-not $ComputerSystem.PartOfDomain) {
@@ -583,8 +603,9 @@ catch {
     }
 }
 finally {
-    if ($null -ne $LdapConnection) {
-        $LdapConnection.Dispose()
+    if ($null -ne $script:LdapConnection) {
+        $script:LdapConnection.Dispose()
+        $script:LdapConnection = $null
     }
 
     if ($null -ne $TsEnvironment) {
