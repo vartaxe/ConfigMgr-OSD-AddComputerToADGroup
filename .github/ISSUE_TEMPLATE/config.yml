@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new
+    about: Private reporting is currently disabled; owner enablement is pending. Contact vartaxe@outlook.com to arrange a private exchange.

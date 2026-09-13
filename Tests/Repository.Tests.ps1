@@ -1,0 +1,62 @@
+BeforeAll {
+    $script:Root = Split-Path -Parent $PSScriptRoot
+    $script:Content = Get-Content (Join-Path $script:Root 'Scripts\Add-ComputerToADGroup.ps1') -Raw
+    $script:Ast = [System.Management.Automation.Language.Parser]::ParseInput($script:Content, [ref]$null, [ref]$null)
+}
+
+Describe 'Repository contract' {
+    It 'keeps the script and manifest at version 1.0.0' {
+        $script:Content | Should -Match '(?m)^\$script:Version\s*=\s*''1\.0\.0'''
+        (Get-Content (Join-Path $script:Root 'VERSION') -Raw).Trim() | Should -BeExactly '1.0.0'
+    }
+
+    It 'requires Windows PowerShell 5.1 and has strict mode and explicit exit' {
+        $script:Content | Should -Match '(?m)^#Requires -Version 5\.1'
+        $script:Content | Should -Match 'Set-StrictMode'
+        $script:Ast.EndBlock.Statements[-1].GetType().Name | Should -Be 'ExitStatementAst'
+    }
+
+    It 'uses only documented credential variables and the log path' {
+        $script:Content | Should -Match 'Microsoft\.SMS\.TSEnvironment'
+        $script:Content | Should -Match "-Name 'ADGroupUserName'"
+        $script:Content | Should -Match "-Name 'ADGroupPassword'"
+        $script:Content | Should -Not -Match '\.GetVariables\('
+        $script:Content | Should -Not -Match '_SMSTS(?!LogPath)\w+'
+    }
+
+    It 'retains secure defaults and explicit compatibility parameters' {
+        $Parameters = @{}
+        foreach ($Parameter in $script:Ast.ParamBlock.Parameters) {
+            $Parameters[$Parameter.Name.VariablePath.UserPath] = $Parameter
+        }
+        $Parameters['AuthenticationMode'].DefaultValue.Value | Should -BeExactly 'Kerberos'
+        $Parameters['DirectoryTransport'].DefaultValue.Value | Should -BeExactly 'LDAPS'
+        $Parameters.Keys | Should -Contain 'AllowNtlmV2'
+    }
+
+    It 'has no forbidden runtime APIs, anonymous bind, or certificate bypass' {
+        $script:Content | Should -Not -Match 'cmdkey|net\s+use|Win32_Product|Get-WmiObject|\bwmic(?:\.exe)?\b'
+        $script:Content | Should -Not -Match 'AuthType\]::(Basic|Anonymous|Ntlm)\b|VerifyServerCertificate|ServerCertificateValidationCallback'
+    }
+
+    It 'has one matching SHA-256 entry for every maintained file except the checksum manifest' {
+        $Names = @()
+        foreach ($Line in (Get-Content -LiteralPath (Join-Path $script:Root 'CHECKSUMS.txt'))) {
+            $Entry = [regex]::Match($Line, '^([A-Fa-f0-9]{64})  ([^\\]+)$')
+            $Entry.Success | Should -BeTrue
+            $Name = $Entry.Groups[2].Value
+            $Name | Should -Not -Be 'CHECKSUMS.txt'
+            $Path = Join-Path $script:Root $Name.Replace('/', '\')
+            Test-Path -LiteralPath $Path -PathType Leaf | Should -BeTrue
+            (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash | Should -Be $Entry.Groups[1].Value
+            $Names += $Name
+        }
+        @($Names | Sort-Object -Unique).Count | Should -Be $Names.Count
+        $Expected = @(
+            Get-ChildItem -LiteralPath $script:Root -Recurse -File -Force |
+                Where-Object { $_.Name -notin @('.git', 'CHECKSUMS.txt') -and $_.FullName -notlike "$script:Root\.git\*" } |
+                ForEach-Object { $_.FullName.Substring($script:Root.Length + 1).Replace('\', '/') }
+        )
+        @(Compare-Object ($Expected | Sort-Object) ($Names | Sort-Object)).Count | Should -Be 0
+    }
+}
