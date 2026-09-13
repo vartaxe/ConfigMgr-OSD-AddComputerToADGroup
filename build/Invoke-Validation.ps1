@@ -29,8 +29,8 @@ $VersionMatch = [regex]::Match($ScriptContent, '(?m)^\$script:Version\s*=\s*''([
 if (-not $VersionMatch.Success -or $VersionMatch.Groups[1].Value -cne $Version) {
     throw 'VERSION and the production script version do not match.'
 }
-if ($Version -cne '1.0.0') {
-    throw 'This import must retain version 1.0.0.'
+if ($Version -cnotmatch '^\d+\.\d+\.\d+$') {
+    throw 'VERSION must contain a three-part numeric version.'
 }
 if ($PSBoundParameters.ContainsKey('Tag') -and $Tag -cne "v$Version") {
     throw 'Tag, VERSION, and the production script version do not match.'
