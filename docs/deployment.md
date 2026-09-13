@@ -5,10 +5,12 @@
 - Run in an active ConfigMgr Task Sequence as **Local System in full Windows after domain join and the required restart**. Do not run in WinPE, before the join restart, or from an ordinary interactive shell.
 - Use **Windows PowerShell 5.1**, not PowerShell 7. The production script has no external runtime module dependency.
 - Ensure domain DNS, time synchronization, and the member computer's secure channel are operational.
-- Default connections use **Kerberos over LDAPS on TCP 636** to discovered domain controllers in the computer's domain. Provide trusted, valid DC certificates matching their DNS names and the required domain network connectivity.
+- Default connections use **Kerberos over LDAPS on TCP 636** to discovered domain controllers in the computer's domain, preferring controllers in the computer's own Active Directory site. Provide trusted, valid DC certificates matching their DNS names and the required domain network connectivity.
 - Delegate directory read access and write access to the target groups' `member` attribute to a dedicated account. Do not use Domain Admin credentials.
 
 ## Recommended Task Sequence layout
+
+<p align="center"><img src="../assets/task-sequence-flow.svg" alt="ConfigMgr Task Sequence pattern: set variables, run packaged script, validate result, clear variables on success and failure" width="100%"></p>
 
 ```text
 Complete domain join

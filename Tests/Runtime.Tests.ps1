@@ -136,6 +136,69 @@ Describe 'LDAP filters and attributes' {
     }
 }
 
+Describe 'Domain controller preference' {
+    BeforeAll {
+        function Get-TestController {
+            param([string]$Name, [string]$Site)
+            $Controller = [pscustomobject]@{ Name = $Name }
+            if ($PSBoundParameters.ContainsKey('Site')) {
+                $Controller | Add-Member NoteProperty SiteName $Site
+            }
+            return $Controller
+        }
+    }
+
+    It 'puts local-site controllers first, then the rest, each sorted by name' {
+        $Controllers = @(
+            (Get-TestController 'dc-remote-b.contoso.com' 'Branch')
+            (Get-TestController 'dc-local-b.contoso.com' 'HQ')
+            (Get-TestController 'dc-remote-a.contoso.com' 'Branch')
+            (Get-TestController 'dc-local-a.contoso.com' 'HQ')
+        )
+        Get-PreferredDomainControllerOrder -Controller $Controllers -SiteName 'HQ' |
+            Should -Be @('dc-local-a.contoso.com', 'dc-local-b.contoso.com', 'dc-remote-a.contoso.com', 'dc-remote-b.contoso.com')
+    }
+
+    It 'keeps every discovered controller reachable as failover rather than filtering by site' {
+        $Controllers = @((Get-TestController 'dc2.contoso.com' 'Branch'), (Get-TestController 'dc1.contoso.com' 'HQ'))
+        @(Get-PreferredDomainControllerOrder -Controller $Controllers -SiteName 'HQ').Count | Should -Be 2
+    }
+
+    It 'falls back to name order when the local site is <Reason>' -ForEach @(
+        @{ Reason = 'unknown'; Site = $null }, @{ Reason = 'empty'; Site = '' }, @{ Reason = 'unmatched'; Site = 'Nowhere' }
+    ) {
+        $Controllers = @((Get-TestController 'dc2.contoso.com' 'HQ'), (Get-TestController 'dc1.contoso.com' 'Branch'))
+        Get-PreferredDomainControllerOrder -Controller $Controllers -SiteName $Site |
+            Should -Be @('dc1.contoso.com', 'dc2.contoso.com')
+    }
+
+    It 'matches site names case-insensitively and lowercases controller names' {
+        Get-PreferredDomainControllerOrder -Controller @((Get-TestController 'DC2.CONTOSO.COM' 'Branch'), (Get-TestController 'DC1.CONTOSO.COM' 'hq')) -SiteName 'HQ' |
+            Should -Be @('dc1.contoso.com', 'dc2.contoso.com')
+    }
+
+    It 'treats a controller without a readable site as remote instead of dropping it' {
+        Get-PreferredDomainControllerOrder -Controller @((Get-TestController 'dc-nosite.contoso.com'), (Get-TestController 'dc-local.contoso.com' 'HQ')) -SiteName 'HQ' |
+            Should -Be @('dc-local.contoso.com', 'dc-nosite.contoso.com')
+    }
+
+    It 'removes duplicates and ignores null or unnamed entries' {
+        $Controllers = @(
+            (Get-TestController 'dc1.contoso.com' 'HQ')
+            (Get-TestController 'DC1.contoso.com' 'HQ')
+            $null
+            (Get-TestController '   ' 'HQ')
+            (Get-TestController 'dc2.contoso.com' 'Branch')
+        )
+        Get-PreferredDomainControllerOrder -Controller $Controllers -SiteName 'HQ' |
+            Should -Be @('dc1.contoso.com', 'dc2.contoso.com')
+    }
+
+    It 'returns an empty collection when nothing was discovered' {
+        @(Get-PreferredDomainControllerOrder -Controller @() -SiteName 'HQ').Count | Should -Be 0
+    }
+}
+
 Describe 'LDAP connection security' {
     BeforeEach {
         $script:Connection = Get-TestConnection

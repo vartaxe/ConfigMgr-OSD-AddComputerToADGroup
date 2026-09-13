@@ -5,6 +5,7 @@ Adds the current computer account to one or more Active Directory groups during 
 .DESCRIPTION
 Reads ADGroupUserName and ADGroupPassword from explicit custom Task Sequence variables.
 The script runs as Local System in the full Windows phase of a ConfigMgr Task Sequence after domain join and a restart, connects to Active Directory by using Kerberos over LDAPS on TCP 636, adds the local computer account to the requested group or groups when needed, and verifies direct membership before returning success.
+Domain controllers in the computer's own Active Directory site are tried first; all discovered controllers remain available for failover.
 
 The script intentionally avoids Network Access Account retrieval, hidden reserved Task Sequence credential variables, legacy command-based credential helpers, LDAP fallback, explicit NTLM LDAP mode, and command-line passwords.
 Credential variables should be created immediately before the script step and cleared immediately afterward with native Task Sequence steps.
@@ -178,14 +179,68 @@ function ConvertTo-LdapFilterValue {
     return $Builder.ToString()
 }
 
+function Get-PreferredDomainControllerOrder {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        $Controller,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$SiteName
+    )
+
+    $LocalSite = New-Object System.Collections.Generic.List[string]
+    $OtherSite = New-Object System.Collections.Generic.List[string]
+
+    foreach ($Entry in @($Controller)) {
+        if ($null -eq $Entry) { continue }
+
+        $Name = $null
+        try { $Name = [string]$Entry.Name } catch { $Name = $null }
+        if ([string]::IsNullOrWhiteSpace($Name)) { continue }
+        $Name = $Name.Trim().ToLowerInvariant()
+
+        # A domain controller that cannot report its site is treated as remote, never skipped.
+        $EntrySite = $null
+        try { $EntrySite = [string]$Entry.SiteName } catch { $EntrySite = $null }
+
+        if ((-not [string]::IsNullOrWhiteSpace($SiteName)) -and ($EntrySite -eq $SiteName)) {
+            $LocalSite.Add($Name)
+        }
+        else {
+            $OtherSite.Add($Name)
+        }
+    }
+
+    return @(
+        @(@($LocalSite | Sort-Object) + @($OtherSite | Sort-Object)) | Select-Object -Unique
+    )
+}
+
+function Get-ComputerSiteName {
+    try {
+        return [string][System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name
+    }
+    catch {
+        return $null
+    }
+}
+
 function Get-DomainControllerName {
     $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain()
-    $Names = @(
-        $Domain.DomainControllers |
-            ForEach-Object { $_.Name.ToLowerInvariant() } |
-            Sort-Object -Unique
-    )
-    return $Names
+    $SiteName = Get-ComputerSiteName
+
+    if ([string]::IsNullOrWhiteSpace($SiteName)) {
+        Write-Log -Level 'WARN' -Message 'The local Active Directory site could not be determined; using name-ordered domain controller discovery.'
+    }
+    else {
+        Write-Log -Message "Preferring domain controllers in the local site: $SiteName"
+    }
+
+    return Get-PreferredDomainControllerOrder -Controller @($Domain.DomainControllers) -SiteName $SiteName
 }
 
 function Connect-LdapServer {

@@ -1,5 +1,7 @@
 # Validation
 
+<p align="center"><img src="../assets/validation-pass.svg" alt="Validation checklist showing required parser, PSScriptAnalyzer, and Pester checks with live ConfigMgr and AD tests marked PENDING" width="70%"></p>
+
 ## Local checks
 
 From the project root in **Windows PowerShell 5.1**, install the same explicitly pinned development modules used by CI:
@@ -46,6 +48,7 @@ No static success illustration or workflow definition is evidence of a passed ru
 | Already-member rerun | **PENDING** | Existing direct member is not duplicated and process exit is `0` |
 | Invalid credentials | **PENDING** | Incorrect credentials fail without secret leakage or repeated lockout-prone retries |
 | Unavailable domain controller | **PENDING** | Failover and bounded retries work; exhausted failures return `1` without authentication/transport fallback |
+| Site-aware domain controller order | **PENDING** | A multi-site domain binds a local-site controller first, and an undetermined site logs the warning and still completes in name order |
 | SignedLdap compatibility | **PENDING** | Explicit TCP 389 connection requires signing and sealing; compatibility selection is logged |
 | Sanitized dedicated log | **PENDING** | Success, compatibility, invalid-credential, and failure paths in `AddComputerToADGroup.log` contain no credentials |
 | Sanitized ConfigMgr log | **PENDING** | Corresponding `smsts.log` entries contain no credentials or unintended parameter disclosure |
