@@ -95,4 +95,12 @@ Describe 'Validation process exit gates' {
         $Result.ExitCode | Should -Not -Be 0
         $Result.Output | Should -Match 'VERSION and the production script version'
     }
+
+    It 'rejects a non-numeric version string' {
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'VERSION') -Value 'not-semver'
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'Scripts\Add-ComputerToADGroup.ps1') -Value '$script:Version = ''not-semver'''
+        $Result = Invoke-ValidationFixture
+        $Result.ExitCode | Should -Not -Be 0
+        $Result.Output | Should -Match 'three-part numeric version'
+    }
 }
