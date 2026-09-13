@@ -1,0 +1,4 @@
+theme: jekyll-theme-cayman
+title: ConfigMgr OSD Add Computer to AD Group
+description: Adds the computer account to Active Directory groups during a ConfigMgr Task Sequence, using Kerberos over LDAPS.
+show_downloads: true

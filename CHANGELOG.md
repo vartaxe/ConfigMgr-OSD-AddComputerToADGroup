@@ -1,14 +1,12 @@
 # Changelog
 
-## 1.0.0 - 2026-07-28
+## 1.1.0 - 2026-08-05
+
+- Treat discovered domain controller names as fully qualified DNS host names, so Kerberos builds the correct service principal name.
+- Stop connecting to further domain controllers once every requested group has been resolved.
+- Document the LDAPS and delegation prerequisites in DEPLOYMENT.md.
+- Document related community implementations and the trade-offs of this approach in DESIGN.md.
+
+## 1.0.0 - 2026-08-04
 
 - Initial validated release.
-- Added ConfigMgr OSD Task Sequence integration.
-- Added LDAPS connectivity on TCP 636 by default.
-- Added automatic domain controller discovery and failover.
-- Added direct Active Directory group membership detection.
-- Added post-write membership verification.
-- Added retry handling for temporary failures.
-- Added dedicated Task Sequence logging.
-- Added optional LDAP fallback.
-- Added secure handling and cleanup of Task Sequence credential variables.

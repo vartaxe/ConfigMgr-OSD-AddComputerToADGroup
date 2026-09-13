@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible issue with sanitized logs.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach unsanitized Task Sequence logs, deployment logs, tokens, passwords, or certificates.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: ConfigMgr version, Windows version, WinPE/full Windows, and script version.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized log excerpt
+      description: Paste only sanitized relevant lines.

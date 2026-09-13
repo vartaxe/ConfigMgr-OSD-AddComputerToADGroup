@@ -1,93 +1,120 @@
 <#
 .SYNOPSIS
-Adds the local computer account to an Active Directory group during a ConfigMgr Task Sequence.
+Adds the local computer account to one or more Active Directory groups during a ConfigMgr Task Sequence.
 
 .DESCRIPTION
-Reads ADGroupUserName and ADGroupPassword from custom Task Sequence variables.
-Uses LDAPS by default, adds the local computer to the target group if needed, and verifies the result.
+Reads ADGroupUserName and ADGroupPassword from custom Task Sequence variables. The script runs in the full Windows phase of a ConfigMgr Task Sequence, connects to Active Directory using Kerberos over LDAPS TCP 636, adds the current computer account to one or more AD groups when required, and verifies direct membership after the update.
 
 .PARAMETER GroupName
-AD group sAMAccountName to add the local computer to.
+One or more Active Directory group sAMAccountName values.
 
-.PARAMETER LogFileName
-Optional log file name. Default is AddComputerToADGroup.log.
+.PARAMETER RetryCount
+Number of complete retry passes for transient readiness or directory failures. Default is 3.
 
-.PARAMETER AllowInsecureLdapFallback
-Optional. If LDAPS on TCP 636 fails, try LDAP on TCP 389.
+.PARAMETER RetryDelaySeconds
+Delay between retry passes. Default is 300 seconds.
+
+.PARAMETER TimeoutSeconds
+LDAP connection and operation timeout per domain controller. Default is 30 seconds.
 
 .EXAMPLE
 .\Add-ComputerToADGroup.ps1 -GroupName "Workstation-Certificate-AutoEnroll"
+
+.EXAMPLE
+.\Add-ComputerToADGroup.ps1 -GroupName "Group-A","Group-B"
 
 .LINK
 https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup
 
 .NOTES
 FileName:      Add-ComputerToADGroup.ps1
-Author:        Claudio Mendes
-Contact:       @vartaxe
+Author:        vartaxe
+Contact:       https://github.com/vartaxe
 Contributors:  Microsoft Copilot
-
-Version history:
-1.0.0 - 2026-07-28 - Initial validated release.
+Version:       1.1.0
+Release:       2026-08-05
+Target:        Windows PowerShell 5.1 during a ConfigMgr Task Sequence in full Windows.
+LogFile:       AddComputerToADGroup.log
 #>
-
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSAvoidUsingConvertToSecureStringWithPlainText',
+    '',
+    Justification = 'The password is supplied at runtime through a hidden ConfigMgr Task Sequence variable, converted immediately to PSCredential, never logged, and not stored in the script.'
+)]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$GroupName,
+    [string[]]$GroupName,
 
     [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [string]$LogFileName = 'AddComputerToADGroup.log',
+    [ValidateRange(1, 10)]
+    [int]$RetryCount = 3,
 
     [Parameter(Mandatory = $false)]
-    [switch]$AllowInsecureLdapFallback
+    [ValidateRange(0, 3600)]
+    [int]$RetryDelaySeconds = 300,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateRange(5, 300)]
+    [int]$TimeoutSeconds = 30
 )
 
+Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$ComputerName = $env:COMPUTERNAME
-$TsUserVariable = 'ADGroupUserName'
-$TsPasswordVariable = 'ADGroupPassword'
-$MaxPasses = 3
-$RetryDelaySeconds = 300
+$script:Version = '1.1.0'
+$script:TaskSequenceEnvironment = $null
+$script:LogPath = $null
 
-$TsEnvironment = $null
-$LogPath = $null
-$script:LdapConnection = $null
-$script:NetworkCredential = $null
-$AdUserName = $null
-$AdPassword = $null
-$ExitCode = 1
-$PermanentFailure = $false
-$script:LogFileName = $LogFileName
-
-function Initialize-GroupLog {
-    $DefaultFolder = Join-Path $env:WINDIR 'CCM\Logs'
-    $Folder = $DefaultFolder
-
+function Get-TaskSequenceEnvironment {
     try {
-        if ($null -ne $script:TsEnvironment) {
-            $TsLogFolder = $script:TsEnvironment.Value('_SMSTSLogPath')
-            if (-not [string]::IsNullOrWhiteSpace($TsLogFolder)) {
-                $Folder = $TsLogFolder
+        return New-Object -ComObject Microsoft.SMS.TSEnvironment -ErrorAction Stop
+    }
+    catch {
+        throw 'Microsoft.SMS.TSEnvironment is unavailable. Run this script inside a ConfigMgr Task Sequence.'
+    }
+}
+
+function Get-TaskSequenceVariable {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Environment,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $Value = [string]$Environment.Value($Name)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        throw "Task Sequence variable '$Name' is empty."
+    }
+    return $Value
+}
+
+function Initialize-ScriptLog {
+    $Folder = Join-Path -Path $env:WINDIR -ChildPath 'Temp'
+    try {
+        $TaskSequenceLogPath = [string]$script:TaskSequenceEnvironment.Value('_SMSTSLogPath')
+        if (-not [string]::IsNullOrWhiteSpace($TaskSequenceLogPath)) {
+            if (Test-Path -LiteralPath $TaskSequenceLogPath -PathType Container) {
+                $Folder = $TaskSequenceLogPath
             }
         }
     }
     catch {
-        $Folder = $DefaultFolder
+        Write-Verbose $_.Exception.Message
     }
 
-    if (-not (Test-Path -Path $Folder)) {
-        New-Item -Path $Folder -ItemType Directory -Force | Out-Null
+    if (-not (Test-Path -LiteralPath $Folder -PathType Container)) {
+        [void](New-Item -Path $Folder -ItemType Directory -Force)
     }
 
-    $script:LogPath = Join-Path $Folder $script:LogFileName
+    $script:LogPath = Join-Path -Path $Folder -ChildPath 'AddComputerToADGroup.log'
 }
 
-function Write-GroupLog {
+function Write-ScriptLog {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Message,
@@ -98,12 +125,18 @@ function Write-GroupLog {
     )
 
     if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
-        Initialize-GroupLog
+        $FallbackFolder = Join-Path -Path $env:WINDIR -ChildPath 'Temp'
+        if (-not (Test-Path -LiteralPath $FallbackFolder -PathType Container)) {
+            [void](New-Item -Path $FallbackFolder -ItemType Directory -Force)
+        }
+        $script:LogPath = Join-Path -Path $FallbackFolder -ChildPath 'AddComputerToADGroup.log'
     }
 
     $Line = '{0} [{1}] {2}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Level, $Message
-    Add-Content -Path $script:LogPath -Value $Line -Encoding UTF8
-    Write-Output $Line
+    Add-Content -LiteralPath $script:LogPath -Value $Line -Encoding UTF8
+    if ($Level -ne 'INFO') {
+        Write-Output $Line
+    }
 }
 
 function ConvertTo-LdapFilterValue {
@@ -123,7 +156,66 @@ function ConvertTo-LdapFilterValue {
             default { [void]$Builder.Append($Character) }
         }
     }
-    $Builder.ToString()
+    return $Builder.ToString()
+}
+
+function Get-DomainControllerName {
+    $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain()
+    $Names = @(
+        $Domain.DomainControllers |
+            ForEach-Object { $_.Name.ToLowerInvariant() } |
+            Sort-Object -Unique
+    )
+    return $Names
+}
+
+function Get-OperationResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Success,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Message = ''
+    )
+
+    return [pscustomobject]@{
+        Success = $Success
+        Status  = $Status
+        Message = $Message
+    }
+}
+
+function Connect-LdapServer {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Server,
+
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.PSCredential]$Credential,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Timeout
+    )
+
+    $Identifier = New-Object System.DirectoryServices.Protocols.LdapDirectoryIdentifier -ArgumentList $Server, 636, $true, $false
+    $Connection = New-Object System.DirectoryServices.Protocols.LdapConnection -ArgumentList $Identifier
+
+    try {
+        $Connection.AuthType = [System.DirectoryServices.Protocols.AuthType]::Kerberos
+        $Connection.Credential = $Credential.GetNetworkCredential()
+        $Connection.SessionOptions.ProtocolVersion = 3
+        $Connection.SessionOptions.SecureSocketLayer = $true
+        $Connection.Timeout = New-TimeSpan -Seconds $Timeout
+        $Connection.Bind()
+        return $Connection
+    }
+    catch {
+        $Connection.Dispose()
+        throw
+    }
 }
 
 function Get-LdapAttributeValue {
@@ -135,61 +227,12 @@ function Get-LdapAttributeValue {
         [string]$Name
     )
 
-    if ($Entry.Attributes.Contains($Name) -and $Entry.Attributes[$Name].Count -gt 0) {
-        [string]$Entry.Attributes[$Name][0]
+    if ($Entry.Attributes.Contains($Name)) {
+        if ($Entry.Attributes[$Name].Count -gt 0) {
+            return [string]$Entry.Attributes[$Name][0]
+        }
     }
-}
-
-function Connect-LdapServer {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Server,
-
-        [Parameter(Mandatory = $true)]
-        [System.Net.NetworkCredential]$AuthCredential,
-
-        [Parameter(Mandatory = $true)]
-        [bool]$UseSsl
-    )
-
-    $Port = if ($UseSsl) { 636 } else { 389 }
-    $Identifier = New-Object System.DirectoryServices.Protocols.LdapDirectoryIdentifier(
-        $Server,
-        $Port,
-        $false,
-        $false
-    )
-
-    $Connection = New-Object System.DirectoryServices.Protocols.LdapConnection($Identifier)
-
-    try {
-        $Connection.AuthType = [System.DirectoryServices.Protocols.AuthType]::Negotiate
-        $Connection.Credential = $AuthCredential
-        $Connection.SessionOptions.ProtocolVersion = 3
-        $Connection.SessionOptions.SecureSocketLayer = $UseSsl
-        $Connection.Timeout = New-TimeSpan -Seconds 15
-        $Connection.Bind()
-        $Connection
-    }
-    catch {
-        $Connection.Dispose()
-        throw
-    }
-}
-
-function Get-DomainControllerList {
-    $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain()
-    $List = @(
-        $Domain.DomainControllers |
-        ForEach-Object { $_.Name.ToLowerInvariant() } |
-        Sort-Object -Unique
-    )
-
-    if ($List.Count -eq 0) {
-        throw 'No domain controllers were discovered.'
-    }
-
-    $List
+    return $null
 }
 
 function Get-DefaultNamingContext {
@@ -198,24 +241,16 @@ function Get-DefaultNamingContext {
         $Connection
     )
 
-    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest(
-        '',
-        '(objectClass=*)',
-        [System.DirectoryServices.Protocols.SearchScope]::Base,
-        @('defaultNamingContext')
-    )
-
+    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest -ArgumentList '', '(objectClass=*)', ([System.DirectoryServices.Protocols.SearchScope]::Base), @('defaultNamingContext')
     $Response = $Connection.SendRequest($Request)
     if ($Response.Entries.Count -ne 1) {
-        throw 'RootDSE did not return exactly one result.'
+        throw 'RootDSE lookup failed.'
     }
-
     $NamingContext = Get-LdapAttributeValue -Entry $Response.Entries[0] -Name 'defaultNamingContext'
     if ([string]::IsNullOrWhiteSpace($NamingContext)) {
         throw 'RootDSE did not return defaultNamingContext.'
     }
-
-    $NamingContext
+    return $NamingContext
 }
 
 function Find-LdapObject {
@@ -233,94 +268,78 @@ function Find-LdapObject {
         [string]$Description
     )
 
-    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest(
-        $SearchBase,
-        $Filter,
-        [System.DirectoryServices.Protocols.SearchScope]::Subtree,
-        @('distinguishedName')
-    )
-
+    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest -ArgumentList $SearchBase, $Filter, ([System.DirectoryServices.Protocols.SearchScope]::Subtree), @('distinguishedName')
     $Response = $Connection.SendRequest($Request)
-
     if ($Response.Entries.Count -eq 0) {
         throw "$Description was not found."
     }
-
     if ($Response.Entries.Count -gt 1) {
         throw "$Description returned multiple results."
     }
-
-    $Response.Entries[0]
+    return $Response.Entries[0]
 }
 
-function Test-GroupMembership {
+function Test-DirectGroupMembership {
     param(
         [Parameter(Mandatory = $true)]
         $Connection,
 
         [Parameter(Mandatory = $true)]
-        [string]$ComputerDN,
+        [string]$GroupDistinguishedName,
 
         [Parameter(Mandatory = $true)]
-        [string]$GroupDN
+        [string]$ComputerDistinguishedName
     )
 
-    $EscapedGroupDN = ConvertTo-LdapFilterValue -Value $GroupDN
-    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest(
-        $ComputerDN,
-        "(&(objectCategory=computer)(memberOf=$EscapedGroupDN))",
-        [System.DirectoryServices.Protocols.SearchScope]::Base,
-        @('distinguishedName')
-    )
-
+    $EscapedComputer = ConvertTo-LdapFilterValue -Value $ComputerDistinguishedName
+    $Filter = '(&(objectClass=group)(member={0}))' -f $EscapedComputer
+    $Request = New-Object System.DirectoryServices.Protocols.SearchRequest -ArgumentList $GroupDistinguishedName, $Filter, ([System.DirectoryServices.Protocols.SearchScope]::Base), @('distinguishedName')
     $Response = $Connection.SendRequest($Request)
-    $Response.Entries.Count -eq 1
+    return ($Response.Entries.Count -eq 1)
 }
 
-function Invoke-MembershipAdd {
+function Invoke-DirectMembershipUpdate {
     param(
         [Parameter(Mandatory = $true)]
         $Connection,
 
         [Parameter(Mandatory = $true)]
-        [string]$ComputerDN,
+        [string]$GroupDistinguishedName,
 
         [Parameter(Mandatory = $true)]
-        [string]$GroupDN
+        [string]$ComputerDistinguishedName
     )
 
     $Change = New-Object System.DirectoryServices.Protocols.DirectoryAttributeModification
     $Change.Name = 'member'
     $Change.Operation = [System.DirectoryServices.Protocols.DirectoryAttributeOperation]::Add
-    [void]$Change.Add($ComputerDN)
-
-    $Request = New-Object System.DirectoryServices.Protocols.ModifyRequest($GroupDN, $Change)
+    [void]$Change.Add($ComputerDistinguishedName)
+    $Request = New-Object System.DirectoryServices.Protocols.ModifyRequest -ArgumentList $GroupDistinguishedName, $Change
 
     try {
         [void]$Connection.SendRequest($Request)
     }
     catch [System.DirectoryServices.Protocols.DirectoryOperationException] {
-        if ($_.Exception.Response.ResultCode -eq [System.DirectoryServices.Protocols.ResultCode]::AttributeOrValueExists) {
-            Write-GroupLog -Level 'WARN' -Message 'The directory reported that the membership already exists.'
-            return
+        if ($_.Exception.Response.ResultCode -ne [System.DirectoryServices.Protocols.ResultCode]::AttributeOrValueExists) {
+            throw
         }
-        throw
     }
 }
 
-function Test-StopRetry {
+function Test-PermanentDirectoryError {
     param(
         [Parameter(Mandatory = $true)]
         [System.Management.Automation.ErrorRecord]$ErrorRecord
     )
 
-    if ($ErrorRecord.Exception -is [System.DirectoryServices.Protocols.LdapException] -and
-        $ErrorRecord.Exception.ErrorCode -eq 49) {
-        return $true
+    if ($ErrorRecord.Exception -is [System.DirectoryServices.Protocols.LdapException]) {
+        if ($ErrorRecord.Exception.ErrorCode -eq 49) {
+            return $true
+        }
     }
 
     if ($ErrorRecord.Exception -is [System.DirectoryServices.Protocols.DirectoryOperationException]) {
-        $StopCodes = @(
+        $PermanentCodes = @(
             [System.DirectoryServices.Protocols.ResultCode]::InsufficientAccessRights,
             [System.DirectoryServices.Protocols.ResultCode]::InvalidCredentials,
             [System.DirectoryServices.Protocols.ResultCode]::ConstraintViolation,
@@ -328,303 +347,191 @@ function Test-StopRetry {
             [System.DirectoryServices.Protocols.ResultCode]::NamingViolation,
             [System.DirectoryServices.Protocols.ResultCode]::UnwillingToPerform
         )
-
-        if ($ErrorRecord.Exception.Response.ResultCode -in $StopCodes) {
+        if ($ErrorRecord.Exception.Response.ResultCode -in $PermanentCodes) {
             return $true
         }
     }
 
-    if ($ErrorRecord.Exception.Message -match 'invalid credentials|user name or password|access is denied|insufficient access|AD group .* was not found|multiple results') {
+    if ($ErrorRecord.Exception.Message -match "AD group '.*' was not found") {
         return $true
     }
-
-    $false
+    if ($ErrorRecord.Exception.Message -match "AD group '.*' returned multiple results") {
+        return $true
+    }
+    if ($ErrorRecord.Exception.Message -match 'invalid credentials|insufficient access|access is denied') {
+        return $true
+    }
+    return $false
 }
 
-function ConvertTo-NetworkCredential {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$AdUserName,
-
-        [Parameter(Mandatory = $true)]
-        [string]$AdPassword
-    )
-
-    $TrimmedUserName = $AdUserName.Trim()
-    if ([string]::IsNullOrWhiteSpace($TrimmedUserName)) {
-        throw "Task Sequence variable '$TsUserVariable' is empty."
-    }
-
-    $SeparatorIndex = $TrimmedUserName.IndexOf('\')
-    if ($SeparatorIndex -gt 0 -and $SeparatorIndex -lt ($TrimmedUserName.Length - 1)) {
-        $AdDomain = $TrimmedUserName.Substring(0, $SeparatorIndex)
-        $AdAccount = $TrimmedUserName.Substring($SeparatorIndex + 1)
-
-        if ([string]::IsNullOrWhiteSpace($AdDomain) -or [string]::IsNullOrWhiteSpace($AdAccount)) {
-            throw "AD account '$TrimmedUserName' is not in a valid DOMAIN\user format."
-        }
-
-        return [System.Net.NetworkCredential]::new($AdAccount, $AdPassword, $AdDomain)
-    }
-
-    [System.Net.NetworkCredential]::new($TrimmedUserName, $AdPassword)
-}
-
-function Invoke-GroupAssignment {
-    param(
-        [Parameter(Mandatory = $true)]
-        [bool]$UseSsl,
-
-        [Parameter(Mandatory = $true)]
-        [int]$Passes,
-
-        [Parameter(Mandatory = $true)]
-        [int]$DelaySeconds
-    )
-
-    $Protocol = if ($UseSsl) { 'LDAPS' } else { 'LDAP' }
-    $Port = if ($UseSsl) { 636 } else { 389 }
-    $LastError = $null
-
-    for ($Pass = 1; $Pass -le $Passes; $Pass++) {
-        Write-GroupLog -Message "$Protocol pass $Pass of $Passes started."
-
-        try {
-            $DomainControllerList = Get-DomainControllerList
-            Write-GroupLog -Message "Discovered domain controllers: $($DomainControllerList -join ', ')"
-        }
-        catch {
-            $LastError = $_
-            Write-GroupLog -Level 'WARN' -Message "Could not discover domain controllers: $($_.Exception.Message)"
-
-            if ($Pass -lt $Passes) {
-                Write-GroupLog -Level 'WARN' -Message "Waiting $DelaySeconds seconds before retry."
-                Start-Sleep -Seconds $DelaySeconds
-                continue
-            }
-            throw
-        }
-
-        foreach ($DomainController in $DomainControllerList) {
-            try {
-                Write-GroupLog -Message "Trying $Protocol connection to $DomainController on TCP $Port."
-                if ($null -eq $script:NetworkCredential) {
-                    throw 'NetworkCredential is null. Check that ADGroupUserName and ADGroupPassword were read correctly.'
-                }
-                $script:LdapConnection = Connect-LdapServer -Server $DomainController -AuthCredential $script:NetworkCredential -UseSsl $UseSsl
-                Write-GroupLog -Message "$Protocol bind succeeded on $DomainController."
-
-                $NamingContext = Get-DefaultNamingContext -Connection $script:LdapConnection
-                Write-GroupLog -Message "Naming context: $NamingContext"
-
-                $ComputerSam = ConvertTo-LdapFilterValue -Value "$script:ComputerName`$"
-                $ComputerEntry = Find-LdapObject `
-                    -Connection $script:LdapConnection `
-                    -SearchBase $NamingContext `
-                    -Filter "(&(objectCategory=computer)(sAMAccountName=$ComputerSam))" `
-                    -Description "Computer account '$script:ComputerName'"
-
-                $ComputerDN = Get-LdapAttributeValue -Entry $ComputerEntry -Name 'distinguishedName'
-                if ([string]::IsNullOrWhiteSpace($ComputerDN)) {
-                    throw 'The computer distinguished name is empty.'
-                }
-                Write-GroupLog -Message "Computer DN: $ComputerDN"
-
-                $GroupSam = ConvertTo-LdapFilterValue -Value $script:GroupName
-                $GroupEntry = Find-LdapObject `
-                    -Connection $script:LdapConnection `
-                    -SearchBase $NamingContext `
-                    -Filter "(&(objectCategory=group)(sAMAccountName=$GroupSam))" `
-                    -Description "AD group '$script:GroupName'"
-
-                $GroupDN = Get-LdapAttributeValue -Entry $GroupEntry -Name 'distinguishedName'
-                if ([string]::IsNullOrWhiteSpace($GroupDN)) {
-                    throw 'The group distinguished name is empty.'
-                }
-                Write-GroupLog -Message "Group DN: $GroupDN"
-
-                $AlreadyMember = Test-GroupMembership -Connection $script:LdapConnection -ComputerDN $ComputerDN -GroupDN $GroupDN
-
-                if ($AlreadyMember) {
-                    Write-GroupLog -Message 'Computer is already a direct member. No change needed.'
-                }
-                else {
-                    Write-GroupLog -Message 'Computer is not a member. Adding computer to group.'
-                    Invoke-MembershipAdd -Connection $script:LdapConnection -ComputerDN $ComputerDN -GroupDN $GroupDN
-                    Write-GroupLog -Message 'Directory modification completed.'
-
-                    $Verified = $false
-                    for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
-                        Write-GroupLog -Message "Membership verification attempt $Attempt of 3."
-                        $Verified = Test-GroupMembership -Connection $script:LdapConnection -ComputerDN $ComputerDN -GroupDN $GroupDN
-                        if ($Verified) { break }
-                        if ($Attempt -lt 3) { Start-Sleep -Seconds 3 }
-                    }
-
-                    if (-not $Verified) {
-                        throw 'Membership verification failed after the write.'
-                    }
-                    Write-GroupLog -Message 'Membership verification succeeded.'
-                }
-
-                if (-not (Test-GroupMembership -Connection $script:LdapConnection -ComputerDN $ComputerDN -GroupDN $GroupDN)) {
-                    throw 'Final membership verification failed.'
-                }
-
-                Write-GroupLog -Message "Membership verified through $DomainController."
-
-                if (-not $UseSsl) {
-                    Write-GroupLog -Level 'WARN' -Message 'Operation succeeded using LDAP on TCP 389. Review LDAPS configuration.'
-                }
-
-                return $true
-            }
-            catch {
-                $LastError = $_
-                Write-GroupLog -Level 'WARN' -Message "$Protocol attempt on $DomainController failed: $($_.Exception.Message)"
-
-                if (Test-StopRetry -ErrorRecord $_) {
-                    $script:PermanentFailure = $true
-                    Write-GroupLog -Level 'ERROR' -Message 'The error is not expected to be fixed by retrying.'
-                    throw
-                }
-            }
-            finally {
-                if ($null -ne $script:LdapConnection) {
-                    $script:LdapConnection.Dispose()
-                    $script:LdapConnection = $null
-                }
-            }
-        }
-
-        if ($Pass -lt $Passes) {
-            Write-GroupLog -Level 'WARN' -Message "All $Protocol attempts failed in pass $Pass of $Passes. Waiting $DelaySeconds seconds before retry."
-            Start-Sleep -Seconds $DelaySeconds
-        }
-    }
-
-    if ($null -ne $LastError) {
-        throw "$Protocol failed after $Passes pass(es). Last error: $($LastError.Exception.Message)"
-    }
-
-    throw "$Protocol failed after $Passes pass(es)."
-}
-
+$ExitCode = 1
 try {
     Add-Type -AssemblyName System.DirectoryServices.Protocols
     Add-Type -AssemblyName System.DirectoryServices
 
+    if ($env:SystemDrive -eq 'X:') {
+        throw 'Windows PE is not supported. Run this script after Windows setup and domain join.'
+    }
+
+    $script:TaskSequenceEnvironment = Get-TaskSequenceEnvironment
+    Initialize-ScriptLog
+    Write-ScriptLog -Message "Add-ComputerToADGroup started. Version=$script:Version"
+
+    $UserName = Get-TaskSequenceVariable -Environment $script:TaskSequenceEnvironment -Name 'ADGroupUserName'
+    $Password = Get-TaskSequenceVariable -Environment $script:TaskSequenceEnvironment -Name 'ADGroupPassword'
     try {
-        $TsEnvironment = New-Object -ComObject Microsoft.SMS.TSEnvironment
+        $SecurePassword = ConvertTo-SecureString -String $Password -AsPlainText -Force
+        $Credential = New-Object System.Management.Automation.PSCredential -ArgumentList $UserName, $SecurePassword
     }
-    catch {
-        throw 'Could not create Microsoft.SMS.TSEnvironment. This script must run inside a ConfigMgr Task Sequence.'
-    }
-
-    Initialize-GroupLog
-    Write-GroupLog -Message 'Add computer to AD group started.'
-    Write-GroupLog -Message "Log file: $LogPath"
-    Write-GroupLog -Message "Process identity: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
-    Write-GroupLog -Message "Computer name: $ComputerName"
-    Write-GroupLog -Message "Requested group: $GroupName"
-
-    if ([string]::IsNullOrWhiteSpace($ComputerName)) {
-        throw 'The local computer name could not be determined.'
+    finally {
+        $Password = $null
+        $SecurePassword = $null
     }
 
-    $AdUserName = $TsEnvironment.Value($TsUserVariable)
-    $AdPassword = $TsEnvironment.Value($TsPasswordVariable)
+    $RequestedGroups = @(
+        $GroupName |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
 
-    if ([string]::IsNullOrWhiteSpace($AdUserName)) {
-        throw "Task Sequence variable '$TsUserVariable' is empty."
+    if ($RequestedGroups.Count -eq 0) {
+        throw 'No valid group names were provided.'
     }
 
-    if ([string]::IsNullOrWhiteSpace($AdPassword)) {
-        throw "Task Sequence variable '$TsPasswordVariable' is empty."
-    }
+    $Results = @{}
 
-    Write-GroupLog -Message "Using AD account: $AdUserName"
-    Write-GroupLog -Message 'Password was read from Task Sequence variable: ********'
-
-    $script:NetworkCredential = ConvertTo-NetworkCredential -AdUserName $AdUserName -AdPassword $AdPassword
-
-    $ComputerSystem = Get-CimInstance Win32_ComputerSystem
-    if (-not $ComputerSystem.PartOfDomain) {
-        throw 'The computer is not joined to an Active Directory domain.'
-    }
-
-    Write-GroupLog -Message "Computer domain: $($ComputerSystem.Domain)"
-
-    try {
-        if (Test-ComputerSecureChannel -ErrorAction Stop) {
-            Write-GroupLog -Message 'Computer secure channel is operational.'
+    for ($Pass = 1; $Pass -le $RetryCount; $Pass++) {
+        $PendingGroups = @($RequestedGroups | Where-Object { -not $Results.ContainsKey($_) })
+        if ($PendingGroups.Count -eq 0) {
+            break
         }
-        else {
-            Write-GroupLog -Level 'WARN' -Message 'Computer secure channel test returned false. Continuing because explicit AD credentials are used.'
+
+        Write-ScriptLog -Message "Pass $Pass of $RetryCount. Pending=$($PendingGroups -join ',')"
+
+        try {
+            if (-not (Test-ComputerSecureChannel -ErrorAction Stop)) {
+                throw 'The computer secure channel is not operational.'
+            }
+
+            $DomainControllers = @(Get-DomainControllerName)
+            Write-ScriptLog -Message "Discovered domain controllers: $($DomainControllers.Count)"
+            if ($DomainControllers.Count -eq 0) {
+                throw 'No domain controllers were discovered.'
+            }
+
+            foreach ($DomainController in $DomainControllers) {
+                if (@($RequestedGroups | Where-Object { -not $Results.ContainsKey($_) }).Count -eq 0) {
+                    break
+                }
+
+                $Connection = $null
+                try {
+                    $Connection = Connect-LdapServer -Server $DomainController -Credential $Credential -Timeout $TimeoutSeconds
+                    $NamingContext = Get-DefaultNamingContext -Connection $Connection
+                    $ComputerSam = ConvertTo-LdapFilterValue -Value ($env:COMPUTERNAME + '$')
+                    $ComputerFilter = '(&(objectCategory=computer)(sAMAccountName={0}))' -f $ComputerSam
+                    $Computer = Find-LdapObject -Connection $Connection -SearchBase $NamingContext -Filter $ComputerFilter -Description "Computer account '$env:COMPUTERNAME'"
+                    $ComputerDn = Get-LdapAttributeValue -Entry $Computer -Name 'distinguishedName'
+
+                    foreach ($CurrentGroup in @($PendingGroups | Where-Object { -not $Results.ContainsKey($_) })) {
+                        try {
+                            $GroupSam = ConvertTo-LdapFilterValue -Value $CurrentGroup
+                            $GroupFilter = '(&(objectCategory=group)(sAMAccountName={0}))' -f $GroupSam
+                            $GroupEntry = Find-LdapObject -Connection $Connection -SearchBase $NamingContext -Filter $GroupFilter -Description "AD group '$CurrentGroup'"
+                            $GroupDn = Get-LdapAttributeValue -Entry $GroupEntry -Name 'distinguishedName'
+
+                            if (Test-DirectGroupMembership -Connection $Connection -GroupDistinguishedName $GroupDn -ComputerDistinguishedName $ComputerDn) {
+                                $Results[$CurrentGroup] = Get-OperationResult -Success $true -Status 'AlreadyMember'
+                            }
+                            else {
+                                Invoke-DirectMembershipUpdate -Connection $Connection -GroupDistinguishedName $GroupDn -ComputerDistinguishedName $ComputerDn
+                                if (-not (Test-DirectGroupMembership -Connection $Connection -GroupDistinguishedName $GroupDn -ComputerDistinguishedName $ComputerDn)) {
+                                    throw 'Membership verification failed.'
+                                }
+                                $Results[$CurrentGroup] = Get-OperationResult -Success $true -Status 'AddedAndVerified'
+                            }
+                        }
+                        catch {
+                            if (Test-PermanentDirectoryError -ErrorRecord $_) {
+                                $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedPermanent' -Message $_.Exception.Message
+                            }
+                            else {
+                                Write-ScriptLog -Level 'WARN' -Message "Transient group failure on ${DomainController}: Group=$CurrentGroup; Error=$($_.Exception.Message)"
+                            }
+                        }
+                    }
+                }
+                catch {
+                    if (Test-PermanentDirectoryError -ErrorRecord $_) {
+                        foreach ($CurrentGroup in @($PendingGroups | Where-Object { -not $Results.ContainsKey($_) })) {
+                            $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedPermanent' -Message $_.Exception.Message
+                        }
+                        break
+                    }
+                    Write-ScriptLog -Level 'WARN' -Message "Transient DC failure on ${DomainController}: $($_.Exception.Message)"
+                }
+                finally {
+                    if ($null -ne $Connection) {
+                        $Connection.Dispose()
+                    }
+                }
+            }
+        }
+        catch {
+            Write-ScriptLog -Level 'WARN' -Message "Transient readiness failure: $($_.Exception.Message)"
+        }
+
+        $RemainingGroups = @($RequestedGroups | Where-Object { -not $Results.ContainsKey($_) })
+        if (($RemainingGroups.Count -gt 0) -and ($Pass -lt $RetryCount) -and ($RetryDelaySeconds -gt 0)) {
+            Start-Sleep -Seconds $RetryDelaySeconds
         }
     }
-    catch {
-        Write-GroupLog -Level 'WARN' -Message "Computer secure channel test failed: $($_.Exception.Message). Continuing because explicit AD credentials are used."
+
+    foreach ($CurrentGroup in $RequestedGroups) {
+        if (-not $Results.ContainsKey($CurrentGroup)) {
+            $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedTransient' -Message 'Retries exhausted.'
+        }
+
+        $LogLevel = 'INFO'
+        if (-not $Results[$CurrentGroup].Success) {
+            $LogLevel = 'ERROR'
+        }
+        Write-ScriptLog -Level $LogLevel -Message "Summary: Group=$CurrentGroup; Result=$($Results[$CurrentGroup].Status); Message=$($Results[$CurrentGroup].Message)"
     }
 
-    Invoke-GroupAssignment -UseSsl $true -Passes $MaxPasses -DelaySeconds $RetryDelaySeconds | Out-Null
-    Write-GroupLog -Message 'Add computer to AD group completed successfully by using LDAPS.'
+    $FailedGroups = @($RequestedGroups | Where-Object { -not $Results[$_].Success })
+    if ($FailedGroups.Count -gt 0) {
+        throw 'One or more group operations failed.'
+    }
+
     $ExitCode = 0
 }
 catch {
-    if ($AllowInsecureLdapFallback -and -not $PermanentFailure) {
-        Write-GroupLog -Level 'WARN' -Message "LDAPS did not complete successfully: $($_.Exception.Message)"
-        Write-GroupLog -Level 'WARN' -Message 'Insecure LDAP fallback is enabled. Trying LDAP on TCP 389.'
-
-        try {
-            Invoke-GroupAssignment -UseSsl $false -Passes 1 -DelaySeconds 0 | Out-Null
-            Write-GroupLog -Level 'WARN' -Message 'Add computer to AD group completed successfully by using LDAP fallback.'
-            $ExitCode = 0
-        }
-        catch {
-            $ExitCode = 1
-            Write-GroupLog -Level 'ERROR' -Message "LDAP fallback also failed: $($_.Exception.Message)"
-            Write-GroupLog -Level 'ERROR' -Message "Exception type: $($_.Exception.GetType().FullName)"
-            Write-GroupLog -Level 'ERROR' -Message "Script line: $($_.InvocationInfo.ScriptLineNumber)"
-        }
-    }
-    else {
-        $ExitCode = 1
-        Write-GroupLog -Level 'ERROR' -Message "ERROR: $($_.Exception.Message)"
-        Write-GroupLog -Level 'ERROR' -Message "Exception type: $($_.Exception.GetType().FullName)"
-        Write-GroupLog -Level 'ERROR' -Message "Script line: $($_.InvocationInfo.ScriptLineNumber)"
-
-        if ($PermanentFailure) {
-            Write-GroupLog -Level 'ERROR' -Message 'LDAP fallback was skipped because the error is permanent.'
-        }
-        else {
-            Write-GroupLog -Level 'ERROR' -Message 'LDAPS failed and LDAP fallback is not enabled.'
-        }
-    }
+    Write-ScriptLog -Level 'ERROR' -Message $_.Exception.Message
+    $ExitCode = 1
 }
 finally {
-    if ($null -ne $script:LdapConnection) {
-        $script:LdapConnection.Dispose()
-        $script:LdapConnection = $null
-    }
-
-    if ($null -ne $TsEnvironment) {
+    if ($null -ne $script:TaskSequenceEnvironment) {
         try {
-            $TsEnvironment.Value($TsUserVariable) = ''
-            $TsEnvironment.Value($TsPasswordVariable) = ''
-            Write-GroupLog -Message 'Task Sequence credential variables cleared.'
+            $script:TaskSequenceEnvironment.Value('ADGroupUserName') = ''
+            $script:TaskSequenceEnvironment.Value('ADGroupPassword') = ''
+            Write-ScriptLog -Message 'Task Sequence credential variables cleared.'
         }
         catch {
-            Write-GroupLog -Level 'WARN' -Message "Could not clear Task Sequence credential variables: $($_.Exception.Message)"
+            Write-ScriptLog -Level 'WARN' -Message "Could not clear Task Sequence credential variables: $($_.Exception.Message)"
         }
     }
 
-    $AdPassword = $null
-    $AdUserName = $null
-    $script:NetworkCredential = $null
-    $TsEnvironment = $null
-
-    Write-GroupLog -Message "Script exit code: $ExitCode"
+    $Credential = $null
+    $script:TaskSequenceEnvironment = $null
+    Write-ScriptLog -Message "Script exit code: $ExitCode"
 }
 
+if ($ExitCode -eq 0) {
+    Write-Output 'AD group operation completed successfully.'
+}
+else {
+    Write-Output 'AD group operation failed. See AddComputerToADGroup.log.'
+}
 exit $ExitCode
