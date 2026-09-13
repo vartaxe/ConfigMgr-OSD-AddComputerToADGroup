@@ -1,0 +1,9 @@
+*.log
+*.zip
+*.7z
+*.cab
+*.pfx
+*.key
+*.secret
+.env
+.vscode/
