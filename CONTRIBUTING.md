@@ -10,5 +10,6 @@ Before opening a pull request:
 4. Do not introduce credential logging.
 5. Update documentation when behavior changes.
 6. Add focused Pester coverage for behavioral fixes, and distinguish mocks from live tests.
+7. Regenerate `CHECKSUMS.txt` after all file changes, including documentation and workflow updates, following the [checkout convention](docs/release-process.md#checksum-checkout-convention). Run validation again before pushing.
 
 The production script must remain self-contained, target Windows PowerShell 5.1, and retain secure defaults. Review analyzer warnings individually; any suppression needs a precise justification. Never include credentials or unsanitized logs in a pull request.

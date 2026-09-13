@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Do not include credentials, internal names, certificates, or raw logs. [Private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new) is currently disabled; owner enablement is pending. Contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange for security issues.
+        Do not include credentials, internal names, certificates, or raw logs. Use [private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new) for security issues. If unavailable, contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange.
   - type: textarea
     id: environment
     attributes:

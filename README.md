@@ -10,6 +10,7 @@ Add computer accounts to Active Directory groups during ConfigMgr OSD with verif
 [![CI](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/workflows/ci.yml/badge.svg)](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/workflows/ci.yml)
 ![PowerShell](https://img.shields.io/badge/Windows%20PowerShell-5.1-2671be)
 [![License](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-db61a2)](https://github.com/sponsors/vartaxe)
 
 ## Quick start
 

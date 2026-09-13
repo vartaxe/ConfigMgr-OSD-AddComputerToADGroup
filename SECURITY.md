@@ -2,9 +2,7 @@
 
 ## Reporting
 
-**GitHub private vulnerability reporting is currently disabled; repository-owner enablement is pending.** Until it is enabled and verified, contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange. Do not post vulnerability details in a public issue or send credentials in the initial contact.
-
-The intended reporting endpoint is [GitHub private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new). Retain the email fallback whenever that endpoint is unavailable.
+**GitHub private vulnerability reporting is enabled.** Use [private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new) for security issues. If the endpoint is unavailable, contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange. Do not post vulnerability details in a public issue or send credentials in the initial contact.
 
 Use [GitHub Issues](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/issues) only for non-sensitive bugs and documentation issues. Do not publish unsanitized logs, ZIP archives, command lines, credentials, tokens, certificates, internal server names, or deployment policy data.
 

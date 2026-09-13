@@ -13,6 +13,8 @@ Warnings/errors and final console status can also appear in **`smsts.log`**, who
 
 Returned LDAP diagnostics are deliberately limited to a sanitized **numeric LDAP error code**, **directory result code**, or **exception type**. For example, invalid credentials may appear as `LDAP error code 49.` rather than a server-provided explanation. Known credential-free messages defined by the script, such as an empty required variable or a failed secure-channel check, remain readable.
 
+Computer lookup failures report `Computer account was not found.` or `Computer account returned multiple results.` without echoing the lookup description. A missing computer account remains retryable within the configured limit because a newly joined account may not yet be visible on every domain controller.
+
 Raw server diagnostic text and raw exception details are not written to the dedicated log or console. Wrapped directory exceptions are unwrapped for classification; their raw messages are not exposed. A shortened message is intentional, not evidence that the server returned no additional detail. Investigate further through approved private directory diagnostics rather than enabling credential or raw-exception logging in the script.
 
 Do not log or dump Task Sequence variables, credentials, or credential objects. Keep native step parameter logging disabled. Sanitization reduces exposure, but directory identifiers and deployment details can remain sensitive. Review sanitized copies of **both** logs before sharing; never upload raw log archives.

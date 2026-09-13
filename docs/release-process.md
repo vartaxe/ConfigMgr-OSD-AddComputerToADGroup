@@ -12,7 +12,7 @@ Version 1.0.0 preparation does **not** create a tag or publish a release. Keep r
 
    Tag validation compares the proposed tag, `VERSION`, and the production script version. CI performs the same comparison on tag pushes; it never creates a tag or release.
 4. Complete and record the [live environment checklist](validation.md). Local checks, mocks, and CI results are not substitutes for it.
-5. Have the repository owner or an administrator enable GitHub private vulnerability reporting and verify the [private reporting endpoint](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new). **Enablement is currently pending.** Until verified, retain the maintainer-email fallback in [security](../SECURITY.md), support guidance, and issue forms. Update availability statements only after confirmation.
+5. Recheck that GitHub private vulnerability reporting remains enabled and verify the [private reporting endpoint](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new). **Enablement has been verified.** Retain the maintainer-email fallback in [security](../SECURITY.md), support guidance, and issue forms in case the endpoint becomes unavailable.
 6. Check public identity, links, sensitive content, and the full diff. Keep generated ZIPs, local reports, and validation output out of source control.
 7. Regenerate `CHECKSUMS.txt` **last**, using SHA-256 and relative forward-slash paths for every maintained file except the manifest itself. Verify every entry exists and matches, entries are unique, and no maintained file is omitted.
 8. Review and merge only through the maintainer-approved pull request process. No workflow publishes releases, and a pull request cannot publish one.

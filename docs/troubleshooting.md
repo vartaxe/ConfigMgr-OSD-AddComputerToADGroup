@@ -27,6 +27,8 @@ LDAP failures intentionally report a sanitized numeric error code, directory res
 | Invalid credentials / `LDAP error code 49.` | Re-enter the two hidden custom variables and check account restrictions/lockout without printing values |
 | Access denied / permanent group failure | Least-privilege delegation to the group's `member` attribute; group scope constraints and domain location |
 | Group not found | Exact group `sAMAccountName` in the computer's domain, not a display name or DN |
+| Computer account was not found | Account exists in the computer's domain with `sAMAccountName` matching the local computer name plus `$`; allow for post-join replication. Retries remain bounded and do not create the account |
+| Computer account returned multiple results | Investigate the ambiguous directory search with the AD administrator; the script does not select an arbitrary account |
 | Unavailable DC / retries exhausted | DC discovery, DNS, network reachability, and readiness; retries do not change transport or authentication |
 | Compatibility request rejected | Negotiate needs explicit `-AllowNtlmV2` and readable local `LmCompatibilityLevel` of `3`, `4`, or `5`; verify server-side LM/NTLMv1 refusal separately. Use [compatibility](compatibility.md), not weaker settings |
 | SignedLdap bind failure | Explicit TCP 389 path and support/policy for **both** signing and sealing |

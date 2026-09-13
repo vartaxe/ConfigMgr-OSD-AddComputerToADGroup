@@ -392,6 +392,12 @@ function Get-SafeErrorMessage {
     if ($Exception.Message -match "^AD group '.*' returned multiple results\.$") {
         return 'Requested AD group returned multiple results.'
     }
+    if ($Exception.Message -match "^Computer account '.*' was not found\.$") {
+        return 'Computer account was not found.'
+    }
+    if ($Exception.Message -match "^Computer account '.*' returned multiple results\.$") {
+        return 'Computer account returned multiple results.'
+    }
     return "Operation failed ($($Exception.GetType().Name)); raw exception details are omitted to protect credentials."
 }
 

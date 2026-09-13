@@ -283,6 +283,35 @@ Describe 'Orchestration with mocked Task Sequence and LDAP boundaries' {
         Should -Invoke Start-Sleep -Times 2 -Exactly -ParameterFilter { $Seconds -eq 2 }
     }
 
+    It 'tries the next DC when the computer account is not yet visible' {
+        $script:ComputerLookups = 0
+        Mock Find-LdapObject {
+            if ($Description -like 'Computer account *') {
+                $script:ComputerLookups++
+                if ($script:ComputerLookups -eq 1) { throw "$Description was not found." }
+            }
+            [pscustomobject]@{}
+        }
+        (Invoke-TestScript)[-1] | Should -Be 0
+        Should -Invoke Connect-LdapServer -Times 2 -Exactly
+        Should -Invoke Test-DirectMembership -Times 1 -Exactly
+        Should -Invoke Invoke-DirectMembershipAdd -Times 0 -Exactly
+        Should -Invoke Start-Sleep -Times 0 -Exactly
+        $script:LogEntries -join "`n" | Should -Match 'Computer account was not found\.'
+    }
+
+    It 'bounds missing computer account retries and reports the lookup failure' {
+        Mock Find-LdapObject { throw "$Description was not found." } -ParameterFilter {
+            $Description -like 'Computer account *'
+        }
+        (Invoke-TestScript -RetryCount 2)[-1] | Should -Be 1
+        Should -Invoke Connect-LdapServer -Times 4 -Exactly
+        Should -Invoke Start-Sleep -Times 1 -Exactly
+        Should -Invoke Invoke-DirectMembershipAdd -Times 0 -Exactly
+        $script:LogEntries -join "`n" | Should -Match 'Computer account was not found\.'
+        $script:LogEntries -join "`n" | Should -Match 'FailedTransient'
+    }
+
     It 'bounds readiness retries without contacting LDAP' {
         Mock Test-ComputerSecureChannel { $false }
         (Invoke-TestScript -RetryCount 3)[-1] | Should -Be 1
@@ -400,6 +429,26 @@ Describe 'Dedicated logging and credential boundaries' {
         catch { $Console = Write-Log -Level ERROR -Message (Get-SafeErrorMessage $_) }
         (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Not -Match 'test-account|test-only-password'
         $Console | Should -Not -Match 'test-account|test-only-password'
+    }
+
+    It 'reports a safe computer lookup diagnostic for <Count> results' -ForEach @(
+        @{ Count = 0; Expected = 'Computer account was not found.' },
+        @{ Count = 2; Expected = 'Computer account returned multiple results.' }
+    ) {
+        $Connection = Get-TestConnection
+        $Connection.Responses.Enqueue([pscustomobject]@{ Entries = @(@(1, 2) | Select-Object -First $Count) })
+        $LookupError = $null
+        try {
+            $null = Find-LdapObject $Connection 'DC=contoso,DC=com' '(objectCategory=computer)' "Computer account 'CONTOSO\test-account test-only-password'"
+        }
+        catch { $LookupError = $_ }
+        $LookupError | Should -Not -BeNullOrEmpty
+        Get-SafeErrorMessage $LookupError | Should -BeExactly $Expected
+        $Console = Write-Log -Level ERROR -Message (Get-SafeErrorMessage $LookupError)
+        (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Match ([regex]::Escape($Expected))
+        (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Not -Match 'test-account|test-only-password'
+        $Console | Should -Not -Match 'test-account|test-only-password'
+        if ($Count -eq 0) { Test-PermanentDirectoryError $LookupError | Should -BeFalse }
     }
 
     It 'surfaces log write failures without echoing raw exception details' {

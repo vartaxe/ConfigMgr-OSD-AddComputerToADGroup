@@ -8,7 +8,7 @@ body:
     id: summary
     attributes:
       label: Summary
-      description: What happened? Do not disclose credentials or internal identifiers. Private vulnerability reporting is currently disabled; contact vartaxe@outlook.com privately for security issues instead.
+      description: What happened? Do not disclose credentials or internal identifiers. For security issues, use private vulnerability reporting from the Security tab; contact vartaxe@outlook.com privately if unavailable.
     validations:
       required: true
   - type: textarea
