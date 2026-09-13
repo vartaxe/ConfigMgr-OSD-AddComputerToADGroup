@@ -8,6 +8,7 @@ Highlights:
 
 - Kerberos over LDAPS TCP 636
 - Domain controller discovery and failover
+- Site-aware domain controller ordering with name-order fallback
 - Multiple group support
 - LDAP filter escaping
 - Direct membership detection
