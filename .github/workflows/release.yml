@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to package and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Install pinned validation modules
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Repository PSGallery -Scope CurrentUser -Force
+          Import-Module Pester -RequiredVersion '5.7.1' -Force
+          Import-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Force
+
+      - name: Validate tagged revision
+        shell: powershell
+        run: .\build\Invoke-Validation.ps1 -Tag $env:RELEASE_TAG
+
+      - name: Create release archive
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Archive = Join-Path $env:RUNNER_TEMP "ConfigMgr-OSD-AddComputerToADGroup-$env:RELEASE_TAG.zip"
+          git archive --format=zip --output=$Archive --prefix="ConfigMgr-OSD-AddComputerToADGroup-$env:RELEASE_TAG/" $env:RELEASE_TAG
+          $Hash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash
+          "$Hash  $(Split-Path -Leaf $Archive)" | Set-Content -LiteralPath "$Archive.sha256" -Encoding ascii
+
+      - name: Publish GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$RUNNER_TEMP/ConfigMgr-OSD-AddComputerToADGroup-$RELEASE_TAG.zip" \
+            "$RUNNER_TEMP/ConfigMgr-OSD-AddComputerToADGroup-$RELEASE_TAG.zip.sha256" \
+            --verify-tag \
+            --title "ConfigMgr OSD Add Computer to AD Group $RELEASE_TAG" \
+            --notes-file RELEASE-NOTES.md \
+            --prerelease

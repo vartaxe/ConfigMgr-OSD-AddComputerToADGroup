@@ -2,7 +2,7 @@
 
 ## v1.0.0
 
-Version 1.0.0 of `Add-ComputerToADGroup.ps1`. These notes do not imply that a GitHub release has been published.
+Version 1.0.0 of `Add-ComputerToADGroup.ps1`.
 
 Highlights:
 
