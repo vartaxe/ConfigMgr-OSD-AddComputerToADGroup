@@ -15,7 +15,7 @@ Version 1.0.0 preparation does **not** create a tag or publish a release. Keep r
 5. Recheck that GitHub private vulnerability reporting remains enabled and verify the [private reporting endpoint](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new). **Enablement has been verified.** Retain the maintainer-email fallback in [security](../SECURITY.md), support guidance, and issue forms in case the endpoint becomes unavailable.
 6. Check public identity, links, sensitive content, and the full diff. Keep generated ZIPs, local reports, and validation output out of source control.
 7. Regenerate `CHECKSUMS.txt` **last**, using SHA-256 and relative forward-slash paths for every maintained file except the manifest itself. Verify every entry exists and matches, entries are unique, and no maintained file is omitted.
-8. Review and merge only through the maintainer-approved pull request process. No workflow publishes releases, and a pull request cannot publish one.
+8. Review and merge through the maintainer-approved pull request process. Push a matching `vX.Y.Z` tag only after the live checklist and release notes are approved. The `Release` workflow validates the tag, creates a source archive and SHA-256 sidecar, and publishes a GitHub prerelease.
 
 ## Checksum checkout convention
 
@@ -23,4 +23,4 @@ Version 1.0.0 preparation does **not** create a tag or publish a release. Keep r
 
 Normalize files to that convention before the final manifest generation, then verify the hashes against a fresh checkout or staged export that honors `.gitattributes`. Recheck after any content or line-ending change. Raw Git blobs or source archives may use different line endings and must not be assumed byte-identical to the checked-out files.
 
-Future approved releases belong at [GitHub Releases](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/releases). That link is a destination, not a claim that a release is already available.
+Approved releases are published at [GitHub Releases](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/releases) by the tag-triggered workflow. A tag is a publication action; do not push one for an unapproved or incompletely validated revision.
