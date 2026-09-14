@@ -5,9 +5,12 @@ BeforeAll {
 }
 
 Describe 'Repository contract' {
-    It 'keeps the script and manifest at version 1.0.0' {
-        $script:Content | Should -Match '(?m)^\$script:Version\s*=\s*''1\.0\.0'''
-        (Get-Content (Join-Path $script:Root 'VERSION') -Raw).Trim() | Should -BeExactly '1.0.0'
+    It 'keeps one matching three-part numeric version in the script and manifest' {
+        $VersionMatch = [regex]::Match($script:Content, '(?m)^\$script:Version\s*=\s*''(\d+\.\d+\.\d+)''\s*$')
+        $VersionMatch.Success | Should -BeTrue
+        $ManifestVersion = (Get-Content (Join-Path $script:Root 'VERSION') -Raw).Trim()
+        $ManifestVersion | Should -Match '^\d+\.\d+\.\d+$'
+        $VersionMatch.Groups[1].Value | Should -BeExactly $ManifestVersion
     }
 
     It 'requires Windows PowerShell 5.1 and has strict mode and explicit exit' {

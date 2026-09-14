@@ -83,6 +83,13 @@ Describe 'Validation process exit gates' {
         $Result.Output | Should -Match 'Pester did not pass'
     }
 
+    It 'fails for a skipped Pester test' {
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'Tests\Fixture.Tests.ps1') -Value 'Describe ''Fixture'' { It ''skips'' -Skip { $true | Should -BeTrue } }'
+        $Result = Invoke-ValidationFixture
+        $Result.ExitCode | Should -Not -Be 0
+        $Result.Output | Should -Match 'Pester did not pass'
+    }
+
     It 'rejects a tag that disagrees with the version' {
         $Result = Invoke-ValidationFixture -Tag 'v9.9.9'
         $Result.ExitCode | Should -Not -Be 0
@@ -102,5 +109,12 @@ Describe 'Validation process exit gates' {
         $Result = Invoke-ValidationFixture
         $Result.ExitCode | Should -Not -Be 0
         $Result.Output | Should -Match 'three-part numeric version'
+    }
+
+    It 'accepts a matching future version tag' {
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'VERSION') -Value '9.9.9'
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'Scripts\Add-ComputerToADGroup.ps1') -Value '$script:Version = ''9.9.9'''
+        $Result = Invoke-ValidationFixture -Tag 'v9.9.9'
+        $Result.ExitCode | Should -Be 0 -Because $Result.Output
     }
 }

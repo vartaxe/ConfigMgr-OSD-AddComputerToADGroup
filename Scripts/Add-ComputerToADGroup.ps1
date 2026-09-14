@@ -146,16 +146,16 @@ function Initialize-Log {
 
 function Write-Log {
     param([Parameter(Mandatory=$true)][string]$Message,[ValidateSet('INFO','WARN','ERROR')][string]$Level='INFO')
+    $Safe = $Message -replace '[\r\n]+',' ' -replace '\]LOG\]!>', ']LOG removed>'
     try {
         $Type = switch ($Level) { 'WARN' {2} 'ERROR' {3} default {1} }
         $Now = [DateTimeOffset]::Now
         $Bias = [int]$Now.Offset.TotalMinutes
         $Time = $Now.ToString('HH:mm:ss.fff') + ('{0:+0;-0;+0}' -f $Bias)
-        $Safe = $Message -replace '[\r\n]+',' ' -replace '\]LOG\]!>', ']LOG removed>'
         $Line = '<![LOG[{0}]LOG]!><time="{1}" date="{2}" component="{3}" context="" type="{4}" thread="{5}" file="">' -f $Safe,$Time,$Now.ToString('MM-dd-yyyy'),$script:Component,$Type,[Threading.Thread]::CurrentThread.ManagedThreadId
         Add-Content -LiteralPath $script:LogPath -Value $Line -Encoding UTF8 -ErrorAction Stop
     } catch { Write-Warning 'Cannot write AddComputerToADGroup.log; check the log directory and permissions.' }
-    if($Level -ne 'INFO'){ Write-Output "[$Level] $Message" }
+    if($Level -ne 'INFO'){ Write-Output "[$Level] $Safe" }
 }
 
 function ConvertTo-LdapFilterValue {

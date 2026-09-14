@@ -487,6 +487,13 @@ Describe 'Dedicated logging and credential boundaries' {
         ([regex]::Matches($Lines[0], '\]LOG\]!>')).Count | Should -Be 1
     }
 
+    It 'uses the sanitized message for warning and error output' {
+        $Console = @(Write-Log -Level WARN -Message "Line1`r`nLine2]LOG]!>")
+        $Console.Count | Should -Be 1
+        $Console[0] | Should -BeExactly '[WARN] Line1 Line2]LOG removed>'
+        $Console[0] | Should -Not -Match '\]LOG\]!>'
+    }
+
     It 'keeps credential-bearing exception messages out of both dedicated and console logs' {
         try { throw [InvalidOperationException]::new('CONTOSO\test-account test-only-password') }
         catch { $Console = Write-Log -Level ERROR -Message (Get-SafeErrorMessage $_) }
