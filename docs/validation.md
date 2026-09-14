@@ -7,14 +7,14 @@
 From the project root in **Windows PowerShell 5.1**, install the same explicitly pinned development modules used by CI:
 
 ```powershell
-Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force -SkipPublisherCheck
+Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force
 Install-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Repository PSGallery -Scope CurrentUser -Force
 Import-Module Pester -RequiredVersion '5.7.1' -Force
 Import-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Force
 .\build\Invoke-Validation.ps1
 ```
 
-These modules are **development dependencies**, not production runtime dependencies. Use your organization's approved package-source and trust policy.
+These modules are **development dependencies**, not production runtime dependencies. Use your organization's approved package source and trust policy; do not bypass publisher verification.
 
 The validator parses every PowerShell file with `[System.Management.Automation.Language.Parser]::ParseFile()`, runs PSScriptAnalyzer on `Scripts`, `Tests`, and `build`, and runs all Pester tests under `Tests`. Parser errors, unreviewed analyzer warnings/errors, and failed Pester tests must produce a nonzero exit code. A Pester result other than `Passed`, zero discovered tests, skipped tests, or tests not run also fails validation. Review findings individually; suppressions require precise justification.
 

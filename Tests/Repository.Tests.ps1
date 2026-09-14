@@ -62,4 +62,18 @@ Describe 'Repository contract' {
         )
         @(Compare-Object ($Expected | Sort-Object) ($Names | Sort-Object)).Count | Should -Be 0
     }
+
+    It 'pins checkout actions by commit and retains publisher verification' {
+        $WorkflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $script:Root '.github\workflows') -Filter '*.yml' -File)
+        $WorkflowFiles.Count | Should -BeGreaterThan 0
+
+        foreach ($WorkflowFile in $WorkflowFiles) {
+            $WorkflowContent = Get-Content -LiteralPath $WorkflowFile.FullName -Raw
+            $WorkflowContent | Should -Match '(?m)^\s*-\s*uses:\s+actions/checkout@[A-Fa-f0-9]{40}(?:\s+#.*)?\s*$'
+            $WorkflowContent | Should -Not -Match '(?i)-SkipPublisherCheck'
+        }
+
+        $ValidationDocumentation = Get-Content -LiteralPath (Join-Path $script:Root 'docs\validation.md') -Raw
+        $ValidationDocumentation | Should -Not -Match '(?i)-SkipPublisherCheck'
+    }
 }
