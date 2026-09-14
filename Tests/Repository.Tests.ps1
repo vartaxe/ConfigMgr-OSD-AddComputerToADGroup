@@ -63,7 +63,7 @@ Describe 'Repository contract' {
         @(Compare-Object ($Expected | Sort-Object) ($Names | Sort-Object)).Count | Should -Be 0
     }
 
-    It 'pins checkout actions by commit and retains publisher verification' {
+    It 'pins checkout actions, retains publisher verification, and preserves release gates' {
         $WorkflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $script:Root '.github\workflows') -Filter '*.yml' -File)
         $WorkflowFiles.Count | Should -BeGreaterThan 0
 
@@ -71,6 +71,15 @@ Describe 'Repository contract' {
             $WorkflowContent = Get-Content -LiteralPath $WorkflowFile.FullName -Raw
             $WorkflowContent | Should -Match '(?m)^\s*-\s*uses:\s+actions/checkout@[A-Fa-f0-9]{40}(?:\s+#.*)?\s*$'
             $WorkflowContent | Should -Not -Match '(?i)-SkipPublisherCheck'
+        }
+
+        $CiWorkflow = Get-Content -LiteralPath (Join-Path $script:Root '.github\workflows\ci.yml') -Raw
+        $CiWorkflow | Should -Match '\$ValidationParameters\s*=\s*@\{\}'
+
+        $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $script:Root '.github\workflows\release.yml') -Raw
+        $ReleaseWorkflow | Should -Match "(?m)^\s*-\s*'v\*\.\*\.\*'\s*$"
+        foreach ($RequiredText in 'Validate tagged revision', 'Create release archive', 'Get-FileHash', 'Publish GitHub prerelease', 'gh release create', '--verify-tag') {
+            $ReleaseWorkflow | Should -Match ([regex]::Escape($RequiredText))
         }
 
         $ValidationDocumentation = Get-Content -LiteralPath (Join-Path $script:Root 'docs\validation.md') -Raw

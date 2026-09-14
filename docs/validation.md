@@ -2,27 +2,33 @@
 
 <p align="center"><img src="../assets/validation-pass.svg" alt="Validation checklist showing required parser, PSScriptAnalyzer, and Pester checks with live ConfigMgr and AD tests marked PENDING" width="70%"></p>
 
-## Local checks
+Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1` to parse every PowerShell file with Windows PowerShell 5.1, run PSScriptAnalyzer, execute Pester tests, and verify the exact-byte checksum manifest.
 
-From the project root in **Windows PowerShell 5.1**, install the same explicitly pinned development modules used by CI:
+## Prerequisites and scope
+
+Install the same pinned development modules used by CI:
 
 ```powershell
 Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force
 Install-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Repository PSGallery -Scope CurrentUser -Force
 Import-Module Pester -RequiredVersion '5.7.1' -Force
 Import-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Force
-.\build\Invoke-Validation.ps1
+
+# Final validation; checksums are required.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1
+
+# Optional tag check (does not create a tag).
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1 -Tag v1.0.0
+
+# Developer loop only, before regenerating CHECKSUMS.txt.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1 -SkipChecksums
 ```
 
 These modules are **development dependencies**, not production runtime dependencies. Use your organization's approved package source and trust policy; do not bypass publisher verification.
 
-The validator parses every PowerShell file with `[System.Management.Automation.Language.Parser]::ParseFile()`, runs PSScriptAnalyzer on `Scripts`, `Tests`, and `build`, and runs all Pester tests under `Tests`. Parser errors, unreviewed analyzer warnings/errors, and failed Pester tests must produce a nonzero exit code. A Pester result other than `Passed`, zero discovered tests, skipped tests, or tests not run also fails validation. Review findings individually; suppressions require precise justification.
+The validator explicitly requires Windows PowerShell 5.1 and the exact module versions, analyzes `Scripts`, `Tests`, and `build`, checks `VERSION` against the production script's literal version assignment, and verifies `CHECKSUMS.txt`. Parser errors, analyzer warnings/errors, missing modules, failed, skipped, or not-run Pester tests, failed discovery, zero discovered tests, and manifest/version errors return a nonzero process exit.
 
-To also compare a proposed tag against `VERSION` and the script version without creating a tag:
-
-```powershell
-.\build\Invoke-Validation.ps1 -Tag 'v1.0.0'
-```
+The manifest covers all files in the source root, including dotfiles, excluding only root `.git` metadata and `CHECKSUMS.txt` itself. Each line is a SHA-256 hash, two spaces, then a root-relative path using forward slashes. Duplicate, missing, extra, malformed, and mismatched entries fail. Validate a clean source tree or full extracted source archive; keep generated ZIPs and test artifacts outside that tree.
 
 ## What each result establishes
 

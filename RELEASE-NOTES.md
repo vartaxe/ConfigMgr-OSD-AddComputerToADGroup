@@ -2,7 +2,7 @@
 
 ## v1.0.0
 
-Version 1.0.0 of `Add-ComputerToADGroup.ps1`.
+The supplied `Add-ComputerToADGroup.ps1` remains version 1.0.0. No tag, published release, or live validation is implied.
 
 Highlights:
 
