@@ -1,8 +1,28 @@
 BeforeAll {
     $script:ValidationSource = Join-Path $PSScriptRoot '..\build\Invoke-Validation.ps1'
 
+    function Get-ValidationFixtureChecksumManifest {
+        return @(
+            Get-ChildItem -LiteralPath $script:FixtureRoot -Recurse -File -Force |
+                Where-Object { $_.Name -ne 'CHECKSUMS.txt' } |
+                ForEach-Object {
+                    $RelativePath = $_.FullName.Substring($script:FixtureRoot.Length + 1).Replace('\', '/')
+                    '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash, $RelativePath
+                }
+        )
+    }
+
     function Invoke-ValidationFixture {
-        param([string]$Tag = 'v1.0.0')
+        param(
+            [string]$Tag = 'v1.0.0',
+
+            [switch]$SkipChecksumRefresh
+        )
+
+        if (-not $SkipChecksumRefresh) {
+            Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'CHECKSUMS.txt') -Value (Get-ValidationFixtureChecksumManifest) -Encoding ascii
+        }
+
         $StartInfo = [Diagnostics.ProcessStartInfo]::new()
         $StartInfo.FileName = Join-Path $PSHOME 'powershell.exe'
         $StartInfo.Arguments = '-NoProfile -NonInteractive -File "' + (Join-Path $script:FixtureRoot 'build\Invoke-Validation.ps1') + '" -Tag "' + $Tag + '"'
@@ -44,6 +64,15 @@ Describe 'Validation process exit gates' {
         $Result = Invoke-ValidationFixture
         $Result.ExitCode | Should -Be 0 -Because $Result.Output
         $Result.Output | Should -Match 'PSScriptAnalyzer: Scripts, Tests, and build passed'
+        $Result.Output | Should -Match 'Checksums: 4 maintained files passed'
+    }
+
+    It 'fails for a checksum mismatch' {
+        Set-Content -LiteralPath (Join-Path $script:FixtureRoot 'CHECKSUMS.txt') -Value (Get-ValidationFixtureChecksumManifest) -Encoding ascii
+        Add-Content -LiteralPath (Join-Path $script:FixtureRoot 'Scripts\Add-ComputerToADGroup.ps1') -Value '# Tampered after checksums'
+        $Result = Invoke-ValidationFixture -SkipChecksumRefresh
+        $Result.ExitCode | Should -Not -Be 0
+        $Result.Output | Should -Match 'Checksum verification failed'
     }
 
     It 'fails the process for a parser error' {

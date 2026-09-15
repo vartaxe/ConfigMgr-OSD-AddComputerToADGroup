@@ -16,7 +16,7 @@ Import-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Force
 
 These modules are **development dependencies**, not production runtime dependencies. Use your organization's approved package source and trust policy; do not bypass publisher verification.
 
-The validator parses every PowerShell file with `[System.Management.Automation.Language.Parser]::ParseFile()`, runs PSScriptAnalyzer on `Scripts`, `Tests`, and `build`, and runs all Pester tests under `Tests`. Parser errors, unreviewed analyzer warnings/errors, and failed Pester tests must produce a nonzero exit code. A Pester result other than `Passed`, zero discovered tests, skipped tests, or tests not run also fails validation. Review findings individually; suppressions require precise justification.
+The validator parses every PowerShell file with `[System.Management.Automation.Language.Parser]::ParseFile()`, verifies that `CHECKSUMS.txt` contains one matching SHA-256 entry for every maintained checked-out file, runs PSScriptAnalyzer on `Scripts`, `Tests`, and `build`, and runs all Pester tests under `Tests`. Parser errors, checksum mismatches, unreviewed analyzer warnings/errors, and failed Pester tests must produce a nonzero exit code. A Pester result other than `Passed`, zero discovered tests, failed tests, failed blocks or containers, skipped tests, inconclusive tests, or tests not run also fails validation. Review findings individually; suppressions require precise justification.
 
 To also compare a proposed tag against `VERSION` and the script version without creating a tag:
 
@@ -28,7 +28,7 @@ To also compare a proposed tag against `VERSION` and the script version without 
 
 | Validation layer | Evidence and limits |
 |---|---|
-| Static | Parser/analyzer results apply to the checked source and runtime; they do not exercise ConfigMgr or AD |
+| Static | Parser, checksum, and analyzer results apply to the checked source and runtime; they do not exercise ConfigMgr or AD |
 | Unit / mocked | Pester checks source contracts and isolated behavior with test doubles; mocks do not establish live authentication, TLS, permissions, or deployment compatibility |
 | GitHub Actions | The [CI run](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/workflows/ci.yml) must complete for the relevant commit before claiming a CI pass; Windows-hosted CI is not a domain/ConfigMgr lab |
 | Live | Only recorded testing in a real ConfigMgr/AD environment establishes the results below |
