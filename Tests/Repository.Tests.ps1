@@ -82,6 +82,8 @@ Describe 'Repository contract' {
 
         $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $script:Root '.github\workflows\release.yml') -Raw
         $ReleaseWorkflow | Should -Match "(?m)^\s*-\s*'v\*\.\*\.\*'\s*$"
+        $ReleaseWorkflow | Should -Match '(?m)^\s+ref:\s+refs/tags/\$\{\{\s*env\.RELEASE_TAG\s*\}\}\s*$'
+        $ReleaseWorkflow | Should -Match '(?m)^\s+git archive[^\r\n]+"refs/tags/\$env:RELEASE_TAG"\s*$'
         foreach ($RequiredText in 'Validate tagged revision', 'Create release archive', 'Get-FileHash', 'Publish GitHub prerelease', 'gh release create', '--verify-tag') {
             $ReleaseWorkflow | Should -Match ([regex]::Escape($RequiredText))
         }

@@ -18,6 +18,8 @@ Preparing a version does **not** publish it. Publication happens only when a mai
 8. Review and merge through the maintainer-approved pull request process. Add a `## vX.Y.Z` section to [`RELEASE-NOTES.md`](../RELEASE-NOTES.md); the `Release` workflow publishes only that section and fails if it is missing or empty.
 9. Push a matching `vX.Y.Z` tag only after the live checklist and release notes are approved. The `Release` workflow revalidates the tagged revision, creates a source archive and SHA-256 sidecar, and publishes a GitHub prerelease.
 
+Checkout and archiving explicitly select `refs/tags/<tag>`, so a same-named branch cannot supply different code. The validator checks tag/version agreement. `--verify-tag` requires the remote tag to exist and prevents release creation from creating a tag.
+
 ## Checksum checkout convention
 
 `CHECKSUMS.txt` hashes the **checked-out file bytes**. Follow [`.gitattributes`](../.gitattributes): PowerShell `.ps1` files use **CRLF**; other text files use **LF**, including Markdown, YAML, SVG, `LICENSE`, and `VERSION`. These repository rules avoid dependence on a contributor's global `core.autocrlf` setting.

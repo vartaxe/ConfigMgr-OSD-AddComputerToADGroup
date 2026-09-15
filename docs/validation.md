@@ -30,6 +30,8 @@ The validator explicitly requires Windows PowerShell 5.1 and the exact module ve
 
 The manifest covers all files in the source root, including dotfiles, excluding only root `.git` metadata and `CHECKSUMS.txt` itself. Each line is a SHA-256 hash, two spaces, then a root-relative path using forward slashes. Duplicate, missing, extra, malformed, and mismatched entries fail. Validate a clean source tree or full extracted source archive; keep generated ZIPs and test artifacts outside that tree.
 
+Process-exit fixtures write their intended inputs once and decode structured PowerShell output, so console line wrapping does not change diagnostic assertions. Their 60-second child-process timeout and nonzero-exit checks remain enforced.
+
 ## What each result establishes
 
 | Validation layer | Evidence and limits |

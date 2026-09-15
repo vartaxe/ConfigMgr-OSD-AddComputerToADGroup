@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           persist-credentials: false
 
       - name: Install pinned validation modules
@@ -43,7 +43,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $Archive = Join-Path $env:RUNNER_TEMP "ConfigMgr-OSD-AddComputerToADGroup-$env:RELEASE_TAG.zip"
-          git archive --format=zip --output=$Archive --prefix="ConfigMgr-OSD-AddComputerToADGroup-$env:RELEASE_TAG/" $env:RELEASE_TAG
+          git archive --format=zip --output=$Archive --prefix="ConfigMgr-OSD-AddComputerToADGroup-$env:RELEASE_TAG/" "refs/tags/$env:RELEASE_TAG"
           if ($LASTEXITCODE -ne 0) { throw "git archive failed for $env:RELEASE_TAG." }
           $Hash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash
           "$Hash  $(Split-Path -Leaf $Archive)" | Set-Content -LiteralPath "$Archive.sha256" -Encoding ascii
