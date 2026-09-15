@@ -57,7 +57,11 @@ Describe 'Repository contract' {
         @($Names | Sort-Object -Unique).Count | Should -Be $Names.Count
         $Expected = @(
             Get-ChildItem -LiteralPath $script:Root -Recurse -File -Force |
-                Where-Object { $_.Name -notin @('.git', 'CHECKSUMS.txt') -and $_.FullName -notlike "$script:Root\.git\*" } |
+                Where-Object {
+                    $_.Name -notin @('.git', 'CHECKSUMS.txt') -and
+                    $_.FullName -ne (Join-Path $script:Root '.git') -and
+                    $_.FullName -notlike "$script:Root\.git\*"
+                } |
                 ForEach-Object { $_.FullName.Substring($script:Root.Length + 1).Replace('\', '/') }
         )
         @(Compare-Object ($Expected | Sort-Object) ($Names | Sort-Object)).Count | Should -Be 0
