@@ -54,13 +54,13 @@ The script reads only these custom credential variables, never reserved ConfigMg
 
 Use group **sAMAccountName** values, not distinguished names or display names.
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll'
 ```
 
 For multiple groups, the **Run PowerShell Script** step's parameters field accepts a PowerShell array:
 
-```powershell
+```text
 -GroupName 'Group-A','Group-B' -RetryCount 3 -RetryDelaySeconds 300 -TimeoutSeconds 30
 ```
 
