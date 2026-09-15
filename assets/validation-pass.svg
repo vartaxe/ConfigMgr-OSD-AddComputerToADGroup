@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="320" viewBox="0 0 920 320" role="img" aria-labelledby="title desc">
+<title id="title">Validation checklist, not a test result</title>
+<desc id="desc">Required parser, PSScriptAnalyzer, Pester, and live validation checks. No passing result is claimed by this illustration.</desc>
+<rect width="920" height="320" rx="22" fill="#0f172a"/>
+<rect x="24" y="24" width="872" height="272" rx="16" fill="#111827" stroke="#334155"/>
+<text x="48" y="68" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#93c5fd">PS&gt; .\build\Invoke-Validation.ps1</text>
+<text x="48" y="112" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#cbd5e1">Required: PowerShell 5.1 parser checks</text>
+<text x="48" y="152" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#cbd5e1">Required: PSScriptAnalyzer and Pester</text>
+<text x="48" y="192" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#fbbf24">Live ConfigMgr / AD tests: PENDING</text>
+<text x="48" y="232" font-family="Cascadia Mono, Consolas, monospace" font-size="22" font-weight="700" fill="#93c5fd">Checklist only - not evidence of a passed run</text>
+</svg>
