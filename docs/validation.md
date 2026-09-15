@@ -1,6 +1,8 @@
 # Validation
 
-<p align="center"><img src="../assets/validation-pass.svg" alt="Validation checklist showing required parser, PSScriptAnalyzer, and Pester checks with live ConfigMgr and AD tests marked PENDING" width="70%"></p>
+<p align="center"><img src="../assets/validation-pass.svg" alt="Validation checklist showing required parser, PSScriptAnalyzer, and Pester checks with live ConfigMgr and AD tests marked PENDING" width="600"></p>
+
+[Open the full-size checklist](../assets/validation-pass.svg). This illustration is not a test result; live ConfigMgr and Active Directory validation remains pending.
 
 Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1` to parse every PowerShell file with Windows PowerShell 5.1, run PSScriptAnalyzer, execute Pester tests, and verify the exact-byte checksum manifest.
 
@@ -19,14 +21,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validatio
 
 # Optional tag check (does not create a tag).
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1 -Tag v1.0.0
-
-# Developer loop only, before regenerating CHECKSUMS.txt.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1 -SkipChecksums
 ```
 
 These modules are **development dependencies**, not production runtime dependencies. Use your organization's approved package source and trust policy; do not bypass publisher verification.
 
 The validator explicitly requires Windows PowerShell 5.1 and the exact module versions, analyzes `Scripts`, `Tests`, and `build`, checks `VERSION` against the production script's literal version assignment, and verifies `CHECKSUMS.txt`. Parser errors, analyzer warnings/errors, missing modules, failed, skipped, or not-run Pester tests, failed discovery, zero discovered tests, and manifest/version errors return a nonzero process exit.
+
+`-SkipChecksums` skips only the validator's final checksum phase. It does not bypass repository-contract tests, which independently check the manifest. Regenerate `CHECKSUMS.txt` before validating the full source tree; the switch is useful for isolated validator fixtures, not as a way to validate source edits against a stale manifest. Final validation must not use it.
 
 The manifest covers all files in the source root, including dotfiles, excluding only root `.git` metadata and `CHECKSUMS.txt` itself. Each line is a SHA-256 hash, two spaces, then a root-relative path using forward slashes. Duplicate, missing, extra, malformed, and mismatched entries fail. Validate a clean source tree or full extracted source archive; keep generated ZIPs and test artifacts outside that tree.
 

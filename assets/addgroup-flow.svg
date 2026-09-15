@@ -1,9 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="260" viewBox="0 0 1400 260" role="img" aria-labelledby="title desc">
-<title id="title">Add Computer to AD Group workflow</title>
-<desc id="desc">Default Task Sequence flow in full Windows after domain join and restart. Native Task Sequence steps create and clear both hidden custom credential variables, including on failure.</desc>
-<defs><filter id="shadow" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity=".15"/></filter></defs>
-<rect width="1400" height="260" rx="24" fill="#f8fafc"/>
-<text x="40" y="50" font-family="Segoe UI, Inter, Arial" font-size="30" font-weight="700" fill="#0f172a">Add Computer to AD Group workflow</text>
-<text x="40" y="225" font-family="Segoe UI, Arial" font-size="19" fill="#475569">Prerequisite: full Windows after domain join and restart. Clear both hidden credential variables on success and failure.</text>
-<rect x="40" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="65" cy="121" r="15" fill="#7C3AED"/><text x="65" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">1</text><text x="120.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Set AD variables</text><path d="M204 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M217 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="224" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="249" cy="121" r="15" fill="#7C3AED"/><text x="249" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">2</text><text x="304.0" y="134" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Validate Windows +</text><text x="304.0" y="154" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">secure channel</text><path d="M388 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M401 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="408" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="433" cy="121" r="15" fill="#7C3AED"/><text x="433" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">3</text><text x="488.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Kerberos LDAPS bind</text><path d="M572 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M585 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="592" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="617" cy="121" r="15" fill="#7C3AED"/><text x="617" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">4</text><text x="672.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Find computer + group</text><path d="M756 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M769 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="776" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="801" cy="121" r="15" fill="#7C3AED"/><text x="801" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">5</text><text x="856.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Add if missing</text><path d="M940 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M953 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="960" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="985" cy="121" r="15" fill="#7C3AED"/><text x="985" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">6</text><text x="1040.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Verify membership</text><path d="M1124 133h16" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><path d="M1137 126l8 7-8 7" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="1144" y="96" width="160" height="74" rx="18" fill="#fff" stroke="#7C3AED" stroke-width="3" filter="url(#shadow)"/><circle cx="1169" cy="121" r="15" fill="#7C3AED"/><text x="1169" y="127" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="700" fill="#fff">7</text><text x="1224.0" y="140" text-anchor="middle" font-family="Segoe UI, Arial" font-size="16" font-weight="600" fill="#0f172a">Clear variables</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="426" viewBox="0 0 1200 426" role="img" aria-labelledby="title desc" font-family="Segoe UI, Arial, sans-serif">
+    <title id="title">Add Computer to AD Group workflow</title>
+    <desc id="desc">Follow steps 1 to 7: set AD variables; validate Windows and secure channel; bind with Kerberos over LDAPS; find computer and group; add if missing; verify membership; clear variables. Run in full Windows after domain join and restart. Native Task Sequence steps create and clear both hidden credential variables, including on failure.</desc>
+    <style>
+        svg { --canvas: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #334155; --accent: #7c3aed; --on-accent: #fff; --arrow: #2563eb; }
+        .canvas { fill: var(--canvas); }
+        .card { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+        .number { fill: var(--accent); }
+        .digit { fill: var(--on-accent); font-size: 20px; font-weight: 700; text-anchor: middle; }
+        .label { fill: var(--text); font-size: 22px; font-weight: 600; }
+        .heading { fill: var(--text); font-size: 32px; font-weight: 700; }
+        .note { fill: var(--muted); font-size: 22px; }
+        .connector { fill: none; stroke: var(--arrow); stroke-width: 2.5; marker-end: url(#arrow); }
+        @media (prefers-color-scheme: dark) {
+            svg { --canvas: #0f172a; --surface: #162238; --text: #f1f5f9; --muted: #cbd5e1; --accent: #c4b5fd; --on-accent: #1e1038; --arrow: #93c5fd; }
+        }
+    </style>
+    <defs>
+        <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M1 1l6 3-6 3" fill="none" stroke="var(--arrow)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+    </defs>
+    <rect class="canvas" width="1200" height="426" rx="24"/>
+    <text class="heading" x="32" y="50">Add Computer to AD Group workflow</text>
+    <g class="step" transform="translate(32 88)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">1</text>
+        <text class="label" x="60" y="37">Set AD</text>
+        <text class="label" x="60" y="65">variables</text>
+    </g>
+    <path class="connector" d="M299 132h17"/>
+    <g class="step" transform="translate(324 88)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">2</text>
+        <text class="label" x="60" y="37">Validate Windows</text>
+        <text class="label" x="60" y="65">+ secure channel</text>
+    </g>
+    <path class="connector" d="M591 132h17"/>
+    <g class="step" transform="translate(616 88)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">3</text>
+        <text class="label" x="60" y="37">Kerberos LDAPS</text>
+        <text class="label" x="60" y="65">bind</text>
+    </g>
+    <path class="connector" d="M883 132h17"/>
+    <g class="step" transform="translate(908 88)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">4</text>
+        <text class="label" x="60" y="37">Find computer</text>
+        <text class="label" x="60" y="65">+ group</text>
+    </g>
+    <path class="connector" d="M1038 183v21H892v21"/>
+    <g class="step" transform="translate(762 232)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">5</text>
+        <text class="label" x="60" y="51">Add if missing</text>
+    </g>
+    <path class="connector" d="M755 276h-17"/>
+    <g class="step" transform="translate(470 232)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">6</text>
+        <text class="label" x="60" y="37">Verify</text>
+        <text class="label" x="60" y="65">membership</text>
+    </g>
+    <path class="connector" d="M463 276h-17"/>
+    <g class="step" transform="translate(178 232)">
+        <rect class="card" width="260" height="88" rx="16"/>
+        <circle class="number" cx="27" cy="44" r="18"/>
+        <text class="digit" x="27" y="51">7</text>
+        <text class="label" x="60" y="51">Clear variables</text>
+    </g>
+    <text class="note" x="32" y="364">Full Windows after domain join and restart.</text>
+    <text class="note" x="32" y="398">Native Task Sequence steps clear both hidden variables on success and failure.</text>
 </svg>

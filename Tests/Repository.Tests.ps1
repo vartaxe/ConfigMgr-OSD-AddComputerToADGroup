@@ -19,6 +19,42 @@ Describe 'Repository contract' {
         $script:Ast.EndBlock.Statements[-1].GetType().Name | Should -Be 'ExitStatementAst'
     }
 
+    It 'keeps the supported header and discoverable help for <RelativePath>' -Tag 'EntryPointHelp' -ForEach @(
+        @{
+            RelativePath = 'Scripts\Add-ComputerToADGroup.ps1'
+            Synopsis = 'Adds the current computer account to one or more Active Directory groups during a ConfigMgr Task Sequence.'
+            HelpParameter = 'GroupName'
+            ParameterDescription = 'One or more Active Directory group sAMAccountName values.'
+            ExampleCount = 2
+        }
+        @{
+            RelativePath = 'build\Invoke-Validation.ps1'
+            Synopsis = 'Validates the source tree using Windows PowerShell 5.1.'
+            HelpParameter = 'Tag'
+            ParameterDescription = 'Optional tag in the form v1.0.0, checked against VERSION and the script.'
+            ExampleCount = 0
+        }
+    ) {
+        $Path = Join-Path $script:Root $RelativePath
+        $Content = Get-Content -LiteralPath $Path -Raw
+        $Content | Should -Match '\A#Requires -Version 5\.1\r?\n\r?\n<#'
+        $Ast = [System.Management.Automation.Language.Parser]::ParseInput($Content, [ref]$null, [ref]$null)
+        $Ast.ScriptRequirements.RequiredPSVersion.ToString() | Should -BeExactly '5.1'
+        $Ast.GetHelpContent() | Should -Not -BeNullOrEmpty
+        $Ast.GetHelpContent().Synopsis.Trim() | Should -BeExactly $Synopsis
+
+        $Help = Get-Help -Name $Path -Full
+        $Help.Synopsis.Trim() | Should -BeExactly $Synopsis
+        $ParameterHelp = @($Help.Parameters.Parameter | Where-Object { $_.Name -eq $HelpParameter })
+        $ParameterHelp.Count | Should -Be 1
+        ($ParameterHelp[0].Description.Text -join ' ').Trim() | Should -BeExactly $ParameterDescription
+        $ActualExampleCount = 0
+        if ($null -ne $Help.PSObject.Properties['examples'] -and $null -ne $Help.Examples) {
+            $ActualExampleCount = @($Help.Examples.Example).Count
+        }
+        $ActualExampleCount | Should -Be $ExampleCount
+    }
+
     It 'uses only documented credential variables and the log path' {
         $script:Content | Should -Match 'Microsoft\.SMS\.TSEnvironment'
         $script:Content | Should -Match "-Name 'ADGroupUserName'"

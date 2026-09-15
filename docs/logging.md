@@ -9,6 +9,10 @@ The log uses native CMTrace entries with severity `1` (information), `2` (warnin
 
 Warnings/errors and final console status can also appear in **`smsts.log`**, whose location is managed by ConfigMgr. These are two separate logs; the dedicated log is not a replacement for `smsts.log`.
 
+**Post-v1.0.0 source correction:** sanitized `WARN` and `ERROR` diagnostics use PowerShell's warning stream (3), not its success stream (1). They remain visible with the same `[WARN]` or `[ERROR]` message text. This prevents a site-discovery warning from being returned as a domain controller name. Dedicated CMTrace severity, final status output, retry handling, and process exit codes are unchanged; an error diagnostic does not introduce a `Write-Error` failure.
+
+This correction belongs to source updates on `main`, not the immutable published v1.0.0 tag or assets, which retain the original diagnostic-stream behavior.
+
 ## Error diagnostics
 
 Returned LDAP diagnostics are deliberately limited to a sanitized **numeric LDAP error code**, **directory result code**, or **exception type**. For example, invalid credentials may appear as `LDAP error code 49.` rather than a server-provided explanation. Known credential-free messages defined by the script, such as an empty required variable or a failed secure-channel check, remain readable.

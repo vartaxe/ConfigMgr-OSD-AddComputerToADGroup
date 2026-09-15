@@ -1,11 +1,13 @@
 #Requires -Version 5.1
+
 <#
 .SYNOPSIS
 Validates the source tree using Windows PowerShell 5.1.
 .PARAMETER Tag
 Optional tag in the form v1.0.0, checked against VERSION and the script.
 .PARAMETER SkipChecksums
-Developer loop only: skips the manifest while source edits await regeneration.
+Skips only this validator's final checksum phase. Repository-contract tests still verify the manifest.
+Regenerate CHECKSUMS.txt before full-tree validation, and do not use this switch for final validation.
 #>
 [CmdletBinding()]
 param(
@@ -26,12 +28,12 @@ try {
     Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -ErrorAction Stop
     $Root = Split-Path -Parent $PSScriptRoot
     $Files = @(Get-ChildItem -LiteralPath $Root -Force | Where-Object { $_.Name -ne '.git' } |
-        ForEach-Object {
-            if ($_.PSIsContainer) {
-                Get-ChildItem -LiteralPath $_.FullName -File -Recurse -Force
-            }
-            else { $_ }
-        })
+            ForEach-Object {
+                if ($_.PSIsContainer) {
+                    Get-ChildItem -LiteralPath $_.FullName -File -Recurse -Force
+                }
+                else { $_ }
+            })
 
     $ScriptAst = $null
     $ScriptPath = Join-Path $Root 'Scripts\Add-ComputerToADGroup.ps1'
@@ -52,11 +54,11 @@ try {
         throw 'VERSION must contain a three-part numeric version.'
     }
     $Assignments = @($ScriptAst.FindAll({
-        param($Node)
-        $Node -is [Management.Automation.Language.AssignmentStatementAst] -and
-        $Node.Left -is [Management.Automation.Language.VariableExpressionAst] -and
-        $Node.Left.VariablePath.UserPath -ieq 'script:Version'
-    }, $true))
+                param($Node)
+                $Node -is [Management.Automation.Language.AssignmentStatementAst] -and
+                $Node.Left -is [Management.Automation.Language.VariableExpressionAst] -and
+                $Node.Left.VariablePath.UserPath -ieq 'script:Version'
+            }, $true))
     if ($Assignments.Count -ne 1 -or
         $Assignments[0].Right -isnot [Management.Automation.Language.CommandExpressionAst] -or
         $Assignments[0].Right.Expression -isnot [Management.Automation.Language.StringConstantExpressionAst]) {
@@ -72,7 +74,7 @@ try {
 
     $Findings = @(
         foreach ($Path in 'Scripts', 'Tests', 'build') {
-            Invoke-ScriptAnalyzer -Path (Join-Path $Root $Path) -Recurse -Severity Error,Warning -ErrorAction Stop
+            Invoke-ScriptAnalyzer -Path (Join-Path $Root $Path) -Recurse -Severity Error, Warning -ErrorAction Stop
         }
     )
     if ($Findings.Count) {

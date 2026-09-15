@@ -12,7 +12,7 @@ Set `ADGroupUserName` to `CONTOSO\svc-configmgr-adgroups` and enter that account
 
 Run the packaged `Scripts\Add-ComputerToADGroup.ps1` as Local System using Windows PowerShell 5.1 with these **Run PowerShell Script** parameters:
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll'
 ```
 

@@ -9,14 +9,14 @@ BeforeAll {
     }
     # Exercise the original orchestration with mocked boundaries, returning rather than exiting Pester.
     $script:RuntimeBody = [scriptblock]::Create((@(
-        foreach ($Statement in $script:RuntimeAst.EndBlock.Statements) {
-            if ($Statement -isnot [System.Management.Automation.Language.FunctionDefinitionAst] -and
-                $Statement -isnot [System.Management.Automation.Language.ExitStatementAst]) {
-                $Statement.Extent.Text
-            }
-        }
-        '$ExitCode'
-    ) -join "`r`n"))
+                foreach ($Statement in $script:RuntimeAst.EndBlock.Statements) {
+                    if ($Statement -isnot [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                        $Statement -isnot [System.Management.Automation.Language.ExitStatementAst]) {
+                        $Statement.Extent.Text
+                    }
+                }
+                '$ExitCode'
+            ) -join "`r`n"))
 
     function Invoke-TestScript {
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'The production script block resolves these parameters from this caller scope.')]
@@ -196,6 +196,73 @@ Describe 'Domain controller preference' {
 
     It 'returns an empty collection when nothing was discovered' {
         @(Get-PreferredDomainControllerOrder -Controller @() -SiteName 'HQ').Count | Should -Be 0
+    }
+}
+
+Describe 'Domain controller discovery diagnostics' -Tag 'DiagnosticStreams' {
+    BeforeAll {
+        $Definition = $script:RuntimeAst.EndBlock.Statements |
+            Where-Object { $_ -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -eq 'Get-DomainControllerName' }
+        $DomainCalls = @($Definition.Body.FindAll({
+                    param($Node)
+                    $Node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+                    $Node.Static -and $Node.Member.Value -eq 'GetComputerDomain'
+                }, $false))
+        $DomainCalls.Count | Should -Be 1
+        # Substitute only the static domain lookup; discovery, ordering, and logging remain production-sourced.
+        $Body = $Definition.Body.Extent.Text
+        $script:DiscoveryBody = [scriptblock]::Create(
+            $Body.Substring(1, $Body.Length - 2).Replace($DomainCalls[0].Extent.Text, '(Get-TestComputerDomain)'))
+
+        function Get-TestComputerDomain {
+            [pscustomobject]@{ DomainControllers = $script:DiscoveryControllers }
+        }
+    }
+
+    BeforeEach {
+        $script:LogPath = Join-Path $TestDrive ('discovery-{0}.log' -f [guid]::NewGuid())
+        $script:Component = 'AddComputerToADGroup'
+        Mock Get-ComputerSiteName { return $script:DiscoverySite }
+    }
+
+    It 'returns only controller names with <Scenario>' -ForEach @(
+        @{
+            Scenario = 'an unknown site and two controllers'
+            Site = $null
+            ControllerCount = 2
+            ExpectedNames = @('dc-a.contoso.com', 'dc-b.contoso.com')
+            WarningCount = 1
+        }
+        @{
+            Scenario = 'an unknown site and no controllers'
+            Site = $null
+            ControllerCount = 0
+            ExpectedNames = @()
+            WarningCount = 1
+        }
+        @{
+            Scenario = 'a known site and two controllers'
+            Site = 'HQ'
+            ControllerCount = 2
+            ExpectedNames = @('dc-b.contoso.com', 'dc-a.contoso.com')
+            WarningCount = 0
+        }
+    ) {
+        $script:DiscoverySite = $Site
+        $script:DiscoveryControllers = @(@(
+                [pscustomobject]@{ Name = 'dc-b.contoso.com'; SiteName = 'HQ' }
+                [pscustomobject]@{ Name = 'dc-a.contoso.com'; SiteName = 'Branch' }
+            ) | Select-Object -First $ControllerCount)
+        $Records = @(& $script:DiscoveryBody 3>&1)
+        $Controllers = @($Records | Where-Object { $_ -isnot [System.Management.Automation.WarningRecord] })
+        $Warnings = @($Records | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+        $Controllers.Count | Should -Be $ControllerCount
+        ($Controllers -join ',') | Should -BeExactly ($ExpectedNames -join ',')
+        $Warnings.Count | Should -Be $WarningCount
+        if ($WarningCount -gt 0) {
+            $Warnings[0].Message | Should -BeExactly '[WARN] The local Active Directory site could not be determined; using name-ordered domain controller discovery.'
+            (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Match 'name-ordered domain controller discovery\..*type="2"'
+        }
     }
 }
 
@@ -487,21 +554,26 @@ Describe 'Dedicated logging and credential boundaries' {
         ([regex]::Matches($Lines[0], '\]LOG\]!>')).Count | Should -Be 1
     }
 
-    It 'uses the sanitized message for warning and error output' {
-        $Console = @(Write-Log -Level WARN -Message "Line1`r`nLine2]LOG]!>")
-        $Console.Count | Should -Be 1
-        $Console[0] | Should -BeExactly '[WARN] Line1 Line2]LOG removed>'
-        $Console[0] | Should -Not -Match '\]LOG\]!>'
+    It 'keeps sanitized <Level> diagnostics visible outside the success stream' -Tag 'DiagnosticStreams' -ForEach @(
+        @{ Level = 'WARN' }, @{ Level = 'ERROR' }
+    ) {
+        $Console = @(Write-Log -Level $Level -Message "Line1`r`nLine2]LOG]!>" -WarningVariable Diagnostics)
+        $Console.Count | Should -Be 0
+        $Diagnostics.Count | Should -Be 1
+        $Diagnostics[0].Message | Should -BeExactly "[$Level] Line1 Line2]LOG removed>"
+        $Diagnostics[0].Message | Should -Not -Match '\]LOG\]!>'
     }
 
-    It 'keeps credential-bearing exception messages out of both dedicated and console logs' {
+    It 'keeps credential-bearing exception messages out of both dedicated and console logs' -Tag 'DiagnosticStreams' {
         try { throw [InvalidOperationException]::new('CONTOSO\test-account test-only-password') }
-        catch { $Console = Write-Log -Level ERROR -Message (Get-SafeErrorMessage $_) }
+        catch { $Console = @(Write-Log -Level ERROR -Message (Get-SafeErrorMessage $_) -WarningVariable Diagnostics) }
         (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Not -Match 'test-account|test-only-password'
-        $Console | Should -Not -Match 'test-account|test-only-password'
+        $Console.Count | Should -Be 0
+        $Diagnostics.Count | Should -Be 1
+        $Diagnostics[0].Message | Should -BeExactly '[ERROR] Operation failed (InvalidOperationException); raw exception details are omitted to protect credentials.'
     }
 
-    It 'reports a safe computer lookup diagnostic for <Count> results' -ForEach @(
+    It 'reports a safe computer lookup diagnostic for <Count> results' -Tag 'DiagnosticStreams' -ForEach @(
         @{ Count = 0; Expected = 'Computer account was not found.' },
         @{ Count = 2; Expected = 'Computer account returned multiple results.' }
     ) {
@@ -514,10 +586,13 @@ Describe 'Dedicated logging and credential boundaries' {
         catch { $LookupError = $_ }
         $LookupError | Should -Not -BeNullOrEmpty
         Get-SafeErrorMessage $LookupError | Should -BeExactly $Expected
-        $Console = Write-Log -Level ERROR -Message (Get-SafeErrorMessage $LookupError)
+        $Console = @(Write-Log -Level ERROR -Message (Get-SafeErrorMessage $LookupError) -WarningVariable Diagnostics)
         (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Match ([regex]::Escape($Expected))
         (Get-Content -LiteralPath $script:LogPath -Raw) | Should -Not -Match 'test-account|test-only-password'
-        $Console | Should -Not -Match 'test-account|test-only-password'
+        $Console.Count | Should -Be 0
+        $Diagnostics.Count | Should -Be 1
+        $Diagnostics[0].Message | Should -BeExactly "[ERROR] $Expected"
+        $Diagnostics[0].Message | Should -Not -Match 'test-account|test-only-password'
         if ($Count -eq 0) { Test-PermanentDirectoryError $LookupError | Should -BeFalse }
     }
 
