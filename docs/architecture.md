@@ -1,6 +1,13 @@
 # Design
 
-<p align="center"><img src="../assets/addgroup-flow.svg" alt="Add Computer to AD Group workflow: set hidden variables, validate Windows and secure channel, connect, add and verify membership, then clear variables" width="100%"></p>
+<p align="center">
+    <picture>
+        <source media="(max-width: 960px)" srcset="../assets/addgroup-flow-compact.svg">
+        <img src="../assets/addgroup-flow.svg" alt="Add Computer to AD Group workflow: set hidden variables, validate Windows and secure channel, connect, add and verify membership, then clear variables">
+    </picture>
+</p>
+
+[Open the full-size workflow](../assets/addgroup-flow.svg). The steps and credential-cleanup responsibilities are described below.
 
 The self-contained `Scripts\Add-ComputerToADGroup.ps1` runs inside an active ConfigMgr Task Sequence as Local System in full Windows, after domain join and restart.
 

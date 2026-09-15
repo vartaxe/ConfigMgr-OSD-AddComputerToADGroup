@@ -1,3 +1,5 @@
+#Requires -Version 5.1
+
 <#
 .SYNOPSIS
 Adds the current computer account to one or more Active Directory groups during a ConfigMgr Task Sequence.
@@ -54,7 +56,6 @@ Release:       2026-08-03
 Target:        Windows PowerShell 5.1 during a ConfigMgr Task Sequence in full Windows.
 LogFile:       AddComputerToADGroup.log
 #>
-#Requires -Version 5.1
 [CmdletBinding()]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
     'PSAvoidUsingConvertToSecureStringWithPlainText',
@@ -78,10 +79,10 @@ param(
     [ValidateRange(5, 300)]
     [int]$TimeoutSeconds = 30,
 
-    [ValidateSet('Kerberos','Negotiate')]
+    [ValidateSet('Kerberos', 'Negotiate')]
     [string]$AuthenticationMode = 'Kerberos',
 
-    [ValidateSet('LDAPS','SignedLdap')]
+    [ValidateSet('LDAPS', 'SignedLdap')]
     [string]$DirectoryTransport = 'LDAPS',
 
     [switch]$AllowNtlmV2
@@ -145,17 +146,38 @@ function Initialize-Log {
 }
 
 function Write-Log {
-    param([Parameter(Mandatory=$true)][string]$Message,[ValidateSet('INFO','WARN','ERROR')][string]$Level='INFO')
-    $Safe = $Message -replace '[\r\n]+',' ' -replace '\]LOG\]!>', ']LOG removed>'
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [ValidateSet('INFO', 'WARN', 'ERROR')]
+        [string]$Level = 'INFO'
+    )
+    $Safe = $Message -replace '[\r\n]+', ' ' -replace '\]LOG\]!>', ']LOG removed>'
     try {
-        $Type = switch ($Level) { 'WARN' {2} 'ERROR' {3} default {1} }
+        $Type = switch ($Level) {
+            'WARN' {
+                2
+            }
+            'ERROR' {
+                3
+            }
+            default {
+                1
+            }
+        }
         $Now = [DateTimeOffset]::Now
         $Bias = [int]$Now.Offset.TotalMinutes
         $Time = $Now.ToString('HH:mm:ss.fff') + ('{0:+0;-0;+0}' -f $Bias)
-        $Line = '<![LOG[{0}]LOG]!><time="{1}" date="{2}" component="{3}" context="" type="{4}" thread="{5}" file="">' -f $Safe,$Time,$Now.ToString('MM-dd-yyyy'),$script:Component,$Type,[Threading.Thread]::CurrentThread.ManagedThreadId
+        $Line = '<![LOG[{0}]LOG]!><time="{1}" date="{2}" component="{3}" context="" type="{4}" thread="{5}" file="">' -f $Safe, $Time, $Now.ToString('MM-dd-yyyy'), $script:Component, $Type, [Threading.Thread]::CurrentThread.ManagedThreadId
         Add-Content -LiteralPath $script:LogPath -Value $Line -Encoding UTF8 -ErrorAction Stop
-    } catch { Write-Warning 'Cannot write AddComputerToADGroup.log; check the log directory and permissions.' }
-    if($Level -ne 'INFO'){ Write-Output "[$Level] $Safe" }
+    }
+    catch {
+        Write-Warning 'Cannot write AddComputerToADGroup.log; check the log directory and permissions.'
+    }
+    if ($Level -ne 'INFO') {
+        Write-Warning "[$Level] $Safe"
+    }
 }
 
 function ConvertTo-LdapFilterValue {
@@ -244,16 +266,45 @@ function Get-DomainControllerName {
 }
 
 function Connect-LdapServer {
-    param([string]$Server,[Management.Automation.PSCredential]$Credential,[int]$Timeout,[string]$Authentication,[string]$Transport)
-    $Port=if($Transport -eq 'LDAPS'){636}else{389}
-    $Identifier=New-Object DirectoryServices.Protocols.LdapDirectoryIdentifier -ArgumentList $Server,$Port,$true,$false
-    $Connection=New-Object DirectoryServices.Protocols.LdapConnection -ArgumentList $Identifier
+    param(
+        [string]$Server,
+        [Management.Automation.PSCredential]$Credential,
+        [int]$Timeout,
+        [string]$Authentication,
+        [string]$Transport
+    )
+    $Port = if ($Transport -eq 'LDAPS') {
+        636
+    }
+    else {
+        389
+    }
+    $Identifier = New-Object DirectoryServices.Protocols.LdapDirectoryIdentifier -ArgumentList $Server, $Port, $true, $false
+    $Connection = New-Object DirectoryServices.Protocols.LdapConnection -ArgumentList $Identifier
     try {
-        $Connection.AuthType=if($Authentication -eq 'Kerberos'){[DirectoryServices.Protocols.AuthType]::Kerberos}else{[DirectoryServices.Protocols.AuthType]::Negotiate}
-        $Connection.Credential=$Credential.GetNetworkCredential(); $Connection.SessionOptions.ProtocolVersion=3; $Connection.Timeout=New-TimeSpan -Seconds $Timeout
-        if($Transport -eq 'LDAPS'){$Connection.SessionOptions.SecureSocketLayer=$true}else{$Connection.SessionOptions.Signing=$true;$Connection.SessionOptions.Sealing=$true}
-        $Connection.Bind(); return $Connection
-    } catch {$Connection.Dispose();throw}
+        $Connection.AuthType = if ($Authentication -eq 'Kerberos') {
+            [DirectoryServices.Protocols.AuthType]::Kerberos
+        }
+        else {
+            [DirectoryServices.Protocols.AuthType]::Negotiate
+        }
+        $Connection.Credential = $Credential.GetNetworkCredential();
+        $Connection.SessionOptions.ProtocolVersion = 3;
+        $Connection.Timeout = New-TimeSpan -Seconds $Timeout
+        if ($Transport -eq 'LDAPS') {
+            $Connection.SessionOptions.SecureSocketLayer = $true
+        }
+        else {
+            $Connection.SessionOptions.Signing = $true;
+            $Connection.SessionOptions.Sealing = $true
+        }
+        $Connection.Bind();
+        return $Connection
+    }
+    catch {
+        $Connection.Dispose();
+        throw
+    }
 }
 
 function Assert-AuthenticationPolicy {

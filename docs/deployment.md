@@ -10,15 +10,22 @@
 
 ## Recommended Task Sequence layout
 
-<p align="center"><img src="../assets/task-sequence-flow.svg" alt="ConfigMgr Task Sequence pattern: set variables, run packaged script, validate result, clear variables on success and failure" width="100%"></p>
+<p align="center">
+    <picture>
+        <source media="(max-width: 960px)" srcset="../assets/task-sequence-flow-compact.svg">
+        <img src="../assets/task-sequence-flow.svg" alt="ConfigMgr Task Sequence pattern: set variables, run the script and save its result, clear variables on success and failure, then report the saved result">
+    </picture>
+</p>
+
+[Open the full-size Task Sequence pattern](../assets/task-sequence-flow.svg). The equivalent sequence is:
 
 ```text
 Complete domain join
 Restart into the installed Windows operating system
 Set hidden ADGroupUserName and ADGroupPassword
-Run packaged Add-ComputerToADGroup.ps1
+Run packaged Add-ComputerToADGroup.ps1 and save its result
 Clear ADGroupUserName and ADGroupPassword on success and failure
-Preserve and handle the script result
+Report or propagate the saved script result
 ```
 
 The restart may already be part of Windows setup, but it must have completed after domain join before this script runs.

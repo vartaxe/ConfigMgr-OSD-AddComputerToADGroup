@@ -38,7 +38,7 @@ BeforeAll {
         $StartInfo = [Diagnostics.ProcessStartInfo]::new()
         $StartInfo.FileName = Join-Path $PSHOME 'powershell.exe'
         $StartInfo.Arguments = '-NoProfile -NonInteractive -OutputFormat XML -ExecutionPolicy Bypass -File "' +
-            (Join-Path $script:FixtureRoot 'build\Invoke-Validation.ps1') + '" -Tag "' + $Tag + '"'
+        (Join-Path $script:FixtureRoot 'build\Invoke-Validation.ps1') + '" -Tag "' + $Tag + '"'
         if ($SkipChecksums) {
             $StartInfo.Arguments += ' -SkipChecksums'
         }
@@ -57,7 +57,7 @@ BeforeAll {
             return [pscustomobject]@{
                 ExitCode = $Process.ExitCode
                 Output = (ConvertFrom-ValidationProcessOutput $OutputTask.Result) + "`n" +
-                    (ConvertFrom-ValidationProcessOutput $ErrorTask.Result)
+                (ConvertFrom-ValidationProcessOutput $ErrorTask.Result)
             }
         }
         finally {

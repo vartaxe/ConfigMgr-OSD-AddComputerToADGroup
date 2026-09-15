@@ -12,7 +12,7 @@
 
 ## Secure default
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll'
 ```
 
@@ -24,7 +24,7 @@ Use only after reviewing policy and testing in a controlled environment. Nondefa
 
 ### Negotiate authentication
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll' -AuthenticationMode Negotiate -AllowNtlmV2
 ```
 
@@ -38,7 +38,7 @@ See Microsoft's [LAN Manager authentication level policy](https://learn.microsof
 
 ### Signed and sealed LDAP
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll' -DirectoryTransport SignedLdap
 ```
 
@@ -46,7 +46,7 @@ This explicitly selects TCP 389 with **both signing and sealing** and retains Ke
 
 If both compatibility options are needed, specify them together:
 
-```powershell
+```text
 -GroupName 'Workstation-Certificate-AutoEnroll' -AuthenticationMode Negotiate -AllowNtlmV2 -DirectoryTransport SignedLdap
 ```
 

@@ -6,7 +6,7 @@ Describe the change and why it is needed.
 
 - [ ] `build\Invoke-Validation.ps1` passes on Windows PowerShell 5.1
 - [ ] PSScriptAnalyzer returns no findings
-- [ ] Pester 5+ discovery and tests pass
+- [ ] Pester 5.7.1 discovery and tests pass
 - [ ] Full validation runs without `-SkipChecksums`; manifest matches worktree and candidate `git archive`
 - [ ] Live results are recorded separately, with untested scenarios explicitly pending
 - [ ] Documentation updated if behavior changed
