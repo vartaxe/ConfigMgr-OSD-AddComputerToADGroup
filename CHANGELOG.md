@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0
+## v1.0.0 (pre-release)
 
 - Initial version of the self-contained Windows PowerShell 5.1 Task Sequence script.
 - Kerberos over LDAPS by default, with explicit authentication and transport compatibility controls.

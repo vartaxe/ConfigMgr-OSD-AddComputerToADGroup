@@ -3,7 +3,7 @@
 Preparing a version does **not** publish it. Publication happens only when a maintainer pushes a matching `vX.Y.Z` tag, which is the explicit approval step. Merging a pull request never publishes a release.
 
 1. Review the complete file list and diff, keeping the production script self-contained.
-2. Run `.\build\Invoke-Validation.ps1` in Windows PowerShell 5.1 with the pinned development modules. It checks every PowerShell file with the parser, analyzes `Scripts`, `Tests`, and `build`, and runs all Pester tests.
+2. Run `.\build\Invoke-Validation.ps1` in Windows PowerShell 5.1 with the pinned development modules. It checks every PowerShell file with the parser, analyzes `Scripts`, `Tests`, and `build`, runs all Pester tests, and verifies `CHECKSUMS.txt`.
 3. Check the proposed version without creating a tag:
 
    ```powershell
