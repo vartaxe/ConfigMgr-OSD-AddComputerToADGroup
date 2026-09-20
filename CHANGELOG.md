@@ -2,6 +2,15 @@
 
 ## v1.0.0 (prerelease)
 
+### Reissue: 2026-09-20
+
+- Maintainer-authorized replacement of the existing v1.0.0 tag and release ZIP/sidecar with one validated revision; previous downloads remain unchanged.
+- Include the merged help, formatting, documentation, and accessible-diagram improvements.
+- Keep sanitized diagnostics on the warning stream so they cannot enter domain-controller results.
+- See the [reissue notice](RELEASE-NOTES.md#reissue-2026-09-20) for the original artifact identity and replacement guidance. Live validation remains pending.
+
+### Initial publication: 2026-09-15
+
 - Initial GitHub prerelease of the self-contained Windows PowerShell 5.1 ConfigMgr Task Sequence script.
 - Kerberos over LDAPS by default, with explicit authentication and transport compatibility controls.
 - Direct computer-group membership checks, additions, verification, domain controller failover, and bounded retry passes.

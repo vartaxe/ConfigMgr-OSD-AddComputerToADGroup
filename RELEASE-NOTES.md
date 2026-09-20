@@ -4,6 +4,14 @@
 
 Version 1.0.0 is [published as a GitHub prerelease](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/releases/tag/v1.0.0). Live ConfigMgr and Active Directory validation remains pending.
 
+### Reissue: 2026-09-20
+
+This maintainer-authorized prerelease reissue replaces the tag, ZIP, and SHA-256 sidecar first published on 2026-09-15. It includes the merged documentation and diagram improvements, discoverable PowerShell help, consistent source formatting, and the diagnostic-stream correction that prevents warnings from being interpreted as domain-controller names. Version remains 1.0.0; authentication and transport defaults are unchanged.
+
+Previously downloaded copies do not update automatically and have different contents under the same version number. Download the ZIP and sidecar together and verify the new SHA-256. The release page records the exact reissued commit and archive hash.
+
+For identification, the original archive SHA-256 was `540B39AF1593AF80AB3FE85E1CEAD812D26811642FDCF47F668D1BA482E9AD69`. Its tag previously selected commit `1f023396296699fee914ea4384c8c0a0463fea63`. Neither identifies this reissue.
+
 Highlights:
 
 - Kerberos over LDAPS TCP 636

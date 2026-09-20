@@ -9,9 +9,9 @@ The log uses native CMTrace entries with severity `1` (information), `2` (warnin
 
 Warnings/errors and final console status can also appear in **`smsts.log`**, whose location is managed by ConfigMgr. These are two separate logs; the dedicated log is not a replacement for `smsts.log`.
 
-**Post-v1.0.0 source correction:** sanitized `WARN` and `ERROR` diagnostics use PowerShell's warning stream (3), not its success stream (1). They remain visible with the same `[WARN]` or `[ERROR]` message text. This prevents a site-discovery warning from being returned as a domain controller name. Dedicated CMTrace severity, final status output, retry handling, and process exit codes are unchanged; an error diagnostic does not introduce a `Write-Error` failure.
+**Diagnostic streams:** sanitized `WARN` and `ERROR` diagnostics use PowerShell's warning stream (3), not its success stream (1). They remain visible with the same `[WARN]` or `[ERROR]` message text. This prevents a site-discovery warning from being returned as a domain controller name. Dedicated CMTrace severity, final status output, retry handling, and process exit codes are unchanged; an error diagnostic does not introduce a `Write-Error` failure.
 
-This correction belongs to source updates on `main`, not the immutable published v1.0.0 tag or assets, which retain the original diagnostic-stream behavior.
+The maintainer-authorized [v1.0.0 reissue of 2026-09-20](../RELEASE-NOTES.md#reissue-2026-09-20) includes this correction. The original 2026-09-15 downloads used the success stream for these diagnostics; existing local copies are not updated automatically.
 
 ## Error diagnostics
 

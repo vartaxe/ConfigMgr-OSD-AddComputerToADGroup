@@ -57,7 +57,7 @@ A ConfigMgr Task Sequence may need to add the newly joined computer to specific 
 
 ## Validation status
 
-For the published v1.0.0 prerelease, Windows PowerShell 5.1 parser checks, PSScriptAnalyzer, mocked Pester tests, SHA-256 manifest verification, and [GitHub Actions](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/runs/35003413864) passed. These results are distinct from live ConfigMgr and Active Directory testing. **All required live tests remain pending**; see the [validation checklist](docs/validation.md). Windows Server 2012/2012 R2 is best effort with WMF 5.1, not a verified platform.
+For the original 2026-09-15 v1.0.0 prerelease, Windows PowerShell 5.1 parser checks, PSScriptAnalyzer, mocked Pester tests, SHA-256 manifest verification, and [GitHub Actions](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/runs/35003413864) passed. The [2026-09-20 reissue notice](RELEASE-NOTES.md#reissue-2026-09-20) distinguishes the replacement; each revision requires its own validation. These results are distinct from live ConfigMgr and Active Directory testing. **All required live tests remain pending**; see the [validation checklist](docs/validation.md). Windows Server 2012/2012 R2 is best effort with WMF 5.1, not a verified platform.
 
 ## Maintainer
 

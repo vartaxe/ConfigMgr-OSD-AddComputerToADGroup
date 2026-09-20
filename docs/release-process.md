@@ -4,6 +4,8 @@ Version 1.0.0 is already [published as a GitHub prerelease](https://github.com/v
 
 This checklist is for **future releases**. The existing `v1.0.0` tag and published assets are immutable. Documentation corrections on `main` do not alter that snapshot or its release ZIP.
 
+The maintainer authorized a one-time exception for the [2026-09-20 v1.0.0 prerelease reissue](../RELEASE-NOTES.md#reissue-2026-09-20): replace its tag, ZIP, and sidecar together using one validated commit, retain private recovery copies, and disclose the old and new identities. This exception does not authorize later silent replacements. Normal future changes use a new version.
+
 Preparing a version does **not** publish it. Publication is an explicit, approved action: either push a matching `vX.Y.Z` tag or manually dispatch the `Release` workflow for an **existing** tag. Merging a pull request never publishes a release.
 
 Throughout this guide, `vX.Y.Z` is a documentation placeholder. Replace it with the intended numeric version tag before executing any command or adding a release-notes heading. The validator accepts only `v` followed by a three-part numeric version, not the literal `vX.Y.Z`.
