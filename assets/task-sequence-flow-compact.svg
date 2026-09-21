@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="596" viewBox="0 0 440 596" role="img" aria-labelledby="title desc" font-family="Segoe UI, Arial, sans-serif">
+    <title id="title">ConfigMgr Task Sequence pattern</title>
+    <desc id="desc">Set hidden custom credential variables; run the packaged script and save its result; clear both variables on success and failure; report the saved result. Run in full Windows after domain join and restart.</desc>
+    <style>
+        svg { --canvas: #f4f8fa; --surface: #fff; --text: #243746; --muted: #526574; --accent: #117865; --on-accent: #fff; --arrow: #155799; }
+        .canvas { fill: var(--canvas); }
+        .card { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+        .number { fill: var(--accent); }
+        .digit { fill: var(--on-accent); font-size: 20px; font-weight: 700; text-anchor: middle; }
+        .label { fill: var(--text); font-size: 24px; font-weight: 600; }
+        .heading { fill: var(--text); font-size: 32px; font-weight: 700; }
+        .note { fill: var(--muted); font-size: 18px; }
+        .connector { fill: none; stroke: var(--arrow); stroke-width: 2.5; marker-end: url(#arrow); }
+        @media (prefers-color-scheme: dark) {
+            svg { --canvas: #0d1520; --surface: #152333; --text: #e5edf3; --muted: #b0c3d1; --accent: #70dec5; --on-accent: #103d38; --arrow: #9dcbff; }
+        }
+    </style>
+    <defs>
+        <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M1 1l6 3-6 3" fill="none" stroke="var(--arrow)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+    </defs>
+    <rect class="canvas" width="440" height="596" rx="24"/>
+    <text class="heading" x="24" y="42">ConfigMgr Task</text>
+    <text class="heading" x="24" y="82">Sequence pattern</text>
+    <g class="step" transform="translate(24 104)">
+        <rect class="card" width="392" height="76" rx="16"/>
+        <circle class="number" cx="30" cy="38" r="18"/>
+        <text class="digit" x="30" y="45">1</text>
+        <text class="label" x="66" y="45">Set variables</text>
+    </g>
+    <path class="connector" d="M54 185v9"/>
+    <g class="step" transform="translate(24 200)">
+        <rect class="card" width="392" height="76" rx="16"/>
+        <circle class="number" cx="30" cy="38" r="18"/>
+        <text class="digit" x="30" y="45">2</text>
+        <text class="label" x="66" y="31">Run script and</text>
+        <text class="label" x="66" y="59">save result</text>
+    </g>
+    <path class="connector" d="M54 281v9"/>
+    <g class="step" transform="translate(24 296)">
+        <rect class="card" width="392" height="76" rx="16"/>
+        <circle class="number" cx="30" cy="38" r="18"/>
+        <text class="digit" x="30" y="45">3</text>
+        <text class="label" x="66" y="31">Clear variables</text>
+        <text class="label" x="66" y="59">success and failure</text>
+    </g>
+    <path class="connector" d="M54 377v9"/>
+    <g class="step" transform="translate(24 392)">
+        <rect class="card" width="392" height="76" rx="16"/>
+        <circle class="number" cx="30" cy="38" r="18"/>
+        <text class="digit" x="30" y="45">4</text>
+        <text class="label" x="66" y="45">Report saved result</text>
+    </g>
+    <text class="note" x="24" y="516">Full Windows after domain join and restart.</text>
+    <text class="note" x="24" y="542">Clear both hidden variables on success and</text>
+    <text class="note" x="24" y="568">failure, then report the saved result.</text>
+</svg>
