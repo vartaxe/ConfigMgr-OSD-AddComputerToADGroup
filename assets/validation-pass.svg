@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="456" viewBox="0 0 600 456" role="img" aria-labelledby="title desc" font-family="Segoe UI, Arial, sans-serif">
+    <title id="title">Validation checklist, not a test result</title>
+    <desc id="desc">Windows PowerShell 5.1 parser checks, PSScriptAnalyzer, and Pester are required. Live ConfigMgr and Active Directory validation is pending. This checklist is not evidence of a passed run.</desc>
+    <style>
+        svg { --canvas: #f4f8fa; --text: #243746; --muted: #526574; --pending: #854d0e; }
+        .canvas { fill: var(--canvas); }
+        .heading { fill: var(--text); font-size: 32px; font-weight: 700; }
+        .label { fill: var(--text); font-size: 26px; }
+        .pending { fill: var(--pending); font-size: 26px; font-weight: 700; }
+        .note { fill: var(--muted); font-size: 26px; }
+        @media (prefers-color-scheme: dark) {
+            svg { --canvas: #0d1520; --text: #e5edf3; --muted: #b0c3d1; --pending: #fde68a; }
+        }
+    </style>
+    <rect class="canvas" width="600" height="456" rx="24"/>
+    <text class="heading" x="28" y="48">Validation checklist</text>
+    <text class="label" x="28" y="114">Required: Windows PowerShell 5.1</text>
+    <text class="label" x="28" y="146">parser checks</text>
+    <text class="label" x="28" y="204">Required: PSScriptAnalyzer</text>
+    <text class="label" x="28" y="236">and Pester</text>
+    <text class="label" x="28" y="294">Live ConfigMgr / AD tests:</text>
+    <text class="pending" x="28" y="326">PENDING</text>
+    <text class="note" x="28" y="386">Checklist only - not evidence</text>
+    <text class="note" x="28" y="418">of a passed run</text>
+</svg>
