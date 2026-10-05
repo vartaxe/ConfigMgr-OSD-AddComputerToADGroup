@@ -1,0 +1,47 @@
+name: Compatibility report
+description: Report a tested platform or an explicit compatibility-mode problem
+title: "[Compatibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, internal names, certificates, or raw logs. Use [private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new) for security issues. If unavailable, contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Script version, ConfigMgr version, Windows version, Windows PowerShell version, and whether domain join and restart completed in full Windows.
+    validations:
+      required: true
+  - type: dropdown
+    id: authentication
+    attributes:
+      label: AuthenticationMode
+      options:
+        - Kerberos (default)
+        - Negotiate with explicit AllowNtlmV2
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: DirectoryTransport
+      options:
+        - LDAPS (default, TCP 636)
+        - SignedLdap (TCP 389, signing and sealing)
+    validations:
+      required: true
+  - type: textarea
+    id: policy
+    attributes:
+      label: Prerequisites and policy
+      description: Without internal identifiers, describe certificate trust and delegation checks. If using Negotiate, explain how policy denies LM and NTLMv1; the switch cannot force NTLMv2.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Results and sanitized evidence
+      description: Distinguish static checks, mocked unit tests, GitHub Actions, and actual live testing. Include steps, expected/actual behavior, and exit code. Share only sanitized excerpts from AddComputerToADGroup.log and smsts.log.
+    validations:
+      required: true
