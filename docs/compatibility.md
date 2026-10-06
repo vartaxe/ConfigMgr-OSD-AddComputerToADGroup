@@ -59,3 +59,14 @@ If both compatibility options are needed, specify them together:
 ```
 
 Validate each compatibility mode you intend to use; a successful default-mode test does not establish the others. See [security](../SECURITY.md) and the [environment-validation checklist](validation.md#required-live-tests).
+
+## Environment-validated assumptions
+
+Two platform behaviors the script relies on are conventional and widely observed, but are not stated as guarantees in Microsoft's published documentation. Confirm both in your own environment rather than assuming them.
+
+| Assumption | Why it matters | How to confirm |
+|---|---|---|
+| A `System.DirectoryServices.Protocols` Kerberos bind uses the supplied `NetworkCredential` derived from the `PSCredential` rather than the calling thread identity | The script runs as Local System and depends on the explicit credential being used for the directory bind | Bind with a credential whose group permissions differ from the computer account and confirm the directory operation reflects the supplied account |
+| `System.DirectoryServices.ActiveDirectory.DirectoryServer.Name` returns a fully qualified domain name | The value is used to build the `LDAP/<fqdn>` service principal name for Kerberos and for LDAPS certificate matching | Inspect the discovered controller names recorded in the log and confirm each is fully qualified in your forest and DNS configuration |
+
+Both appear in the [environment-validation checklist](validation.md#required-live-tests). No live Active Directory verification of either assumption was executed for this release.
