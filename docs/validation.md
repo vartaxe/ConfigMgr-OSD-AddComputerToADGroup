@@ -72,5 +72,7 @@ Complete these checks in a controlled environment before broad rollout. **None w
 | Sanitized ConfigMgr log | Not executed | Corresponding `smsts.log` entries contain no credentials or unintended parameter disclosure |
 | Negotiate compatibility | Not executed | Explicit opt-in and enforced LM/NTLMv1 denial; negotiated authentication checked independently rather than inferred from `AuthType` |
 | Credential cleanup and failure propagation | Not executed | Both hidden custom variables cleared on success/failure and failed script results preserved |
+| Explicit credential honored by the directory bind | Not executed | A bind credential whose group permissions differ from the computer account produces directory results attributable to the supplied account rather than the Local System thread identity |
+| Fully qualified domain controller names | Not executed | Discovered controller names recorded in the log are fully qualified, so the `LDAP/<fqdn>` service principal name and LDAPS certificate matching resolve correctly |
 
 Keep raw logs private. Record only sanitized evidence and non-sensitive environment versions. See [compatibility](compatibility.md) for candidate platforms and [security](../SECURITY.md) for limitations.
