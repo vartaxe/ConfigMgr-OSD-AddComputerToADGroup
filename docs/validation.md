@@ -10,7 +10,7 @@ title: Validation
 
 [Open the full-size checklist](../assets/validation-pass.svg). The illustration summarizes the validation layers; use the results and checklist below when planning a rollout.
 
-The v1.0.0 source passes Windows PowerShell 5.1 parser checks, PSScriptAnalyzer 1.25.0, Pester 5.7.1, and exact-byte source manifest verification. Runtime tests bind the production parameters and use mocked Task Sequence, domain-discovery, and LDAP boundaries. They cover escaped requests, membership verification, exception classification, failover, bounded retries, duplicate groups, resource disposal, and credential-free diagnostics.
+The source passes Windows PowerShell 5.1 parser checks, PSScriptAnalyzer 1.25.0, Pester 6.2.0, and exact-byte source manifest verification. Runtime tests bind the production parameters and use mocked Task Sequence, domain-discovery, and LDAP boundaries. They cover escaped requests, membership verification, exception classification, failover, bounded retries, duplicate groups, resource disposal, and credential-free diagnostics.
 
 **Live ConfigMgr and Active Directory testing was not executed.** Automated results do not establish live authentication, certificate trust, permissions, or deployment compatibility.
 
@@ -19,7 +19,7 @@ The v1.0.0 source passes Windows PowerShell 5.1 parser checks, PSScriptAnalyzer 
 Use the same pinned development modules as CI. If the required versions are missing, install them through your organization's approved package source and trust policy; retain publisher verification:
 
 ```powershell
-Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force
+Install-Module Pester -RequiredVersion '6.2.0' -Repository PSGallery -Scope CurrentUser -Force
 Install-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Repository PSGallery -Scope CurrentUser -Force
 ```
 

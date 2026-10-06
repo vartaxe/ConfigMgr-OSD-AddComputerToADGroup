@@ -24,7 +24,7 @@ try {
         throw 'Validation requires Windows PowerShell 5.1 (powershell.exe).'
     }
 
-    Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
+    Import-Module Pester -RequiredVersion 6.2.0 -ErrorAction Stop
     Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -ErrorAction Stop
     $Root = Split-Path -Parent $PSScriptRoot
     $Files = @(Get-ChildItem -LiteralPath $Root -Force | Where-Object { $_.Name -ne '.git' } |

@@ -399,6 +399,11 @@ Describe 'LDAP connection security' {
         foreach ($Character in 'test-only-password'.ToCharArray()) { $Secret.AppendChar($Character) }
         $script:TestCredential = [pscredential]::new('CONTOSO\test-account', $Secret)
         Mock New-Object {
+            $Real = Get-Command New-Object -CommandType Cmdlet
+            if ($null -eq $ArgumentList) { & $Real -TypeName $TypeName }
+            else { & $Real -TypeName $TypeName -ArgumentList $ArgumentList }
+        }
+        Mock New-Object {
             $script:Identifier = $ArgumentList[0]
             $script:Connection
         } -ParameterFilter { $TypeName -eq 'DirectoryServices.Protocols.LdapConnection' }
@@ -626,6 +631,11 @@ Describe 'Orchestration with mocked Task Sequence and LDAP boundaries' {
     }
 
     It 'releases the secure password if credential construction fails' -Tag 'ResourceDisposal' {
+        Mock New-Object {
+            $Real = Get-Command New-Object -CommandType Cmdlet
+            if ($null -eq $ArgumentList) { & $Real -TypeName $TypeName }
+            else { & $Real -TypeName $TypeName -ArgumentList $ArgumentList }
+        }
         Mock New-Object {
             $script:ObservedSecurePassword = $ArgumentList[1]
             throw [ArgumentException]::new('Test credential construction failure.')
