@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a focused improvement for ConfigMgr Task Sequence use
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep examples generic and do not disclose credentials or internal deployment details. Use [private vulnerability reporting](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/security/advisories/new) for security issues. If unavailable, contact [vartaxe@outlook.com](mailto:vartaxe@outlook.com) to arrange a private exchange.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the Task Sequence problem and why existing behavior is insufficient.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+      description: Explain expected behavior and how it preserves Windows PowerShell 5.1, a self-contained runtime script, and secure defaults.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and validation
+      description: Describe alternatives considered and how the change could be tested. Do not imply live validation that has not occurred.

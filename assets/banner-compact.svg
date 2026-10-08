@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Add Computer to AD Group</title>
+  <desc id="desc">Add computer accounts to Active Directory groups during ConfigMgr OSD. Windows PowerShell 5.1.</desc>
+  <style>
+    svg { color-scheme: light dark; font-family: "Segoe UI", Arial, sans-serif; }
+    .start { stop-color: #155799; }
+    .end { stop-color: #117865; }
+    text { fill: #ffffff; }
+    .script-name { font-family: Consolas, "Cascadia Mono", monospace; }
+    @media (prefers-color-scheme: dark) {
+      .start { stop-color: #0d2e4c; }
+      .end { stop-color: #103d38; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="background" x1="0" x2="1" y1="0" y2="1">
+      <stop class="start" offset="0"/>
+      <stop class="end" offset="1"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="24" fill="url(#background)"/>
+  <text x="32" y="48" font-size="22" font-weight="600">VARTAXE / CONFIGMGR OSD</text>
+  <text x="32" y="114" font-size="44" font-weight="700">Add Computer</text>
+  <text x="32" y="167" font-size="44" font-weight="700">to AD Group</text>
+  <text x="32" y="216" font-size="25">Group membership for ConfigMgr</text>
+  <text class="script-name" x="32" y="270" font-size="24">Add-ComputerToADGroup.ps1</text>
+  <text x="32" y="326" font-size="24">Windows PowerShell 5.1 / MIT licensed</text>
+</svg>

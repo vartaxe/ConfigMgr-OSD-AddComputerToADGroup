@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a reproducible issue
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened? Do not disclose credentials or internal identifiers. For security issues, use private vulnerability reporting from the Security tab; contact vartaxe@outlook.com privately if unavailable.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Script version, ConfigMgr version, Windows version, Windows PowerShell version, full Windows/WinPE, and whether domain join and restart completed. Sanitize identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+      description: Describe minimal reproduction steps, expected/actual results, and process exit code. Include only non-sensitive parameter names and generic values.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Paste only sanitized log snippets. Do not upload raw archives, secrets, tokens, or certificates.

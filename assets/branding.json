@@ -1,0 +1,8 @@
+{
+  "title": "Add Computer to AD Group",
+  "compactTitle": ["Add Computer", "to AD Group"],
+  "subtitle": "Group membership for ConfigMgr deployment",
+  "compactSubtitle": "Group membership for ConfigMgr",
+  "script": "Add-ComputerToADGroup.ps1",
+  "description": "Add computer accounts to Active Directory groups during ConfigMgr OSD. Windows PowerShell 5.1."
+}
