@@ -185,7 +185,7 @@ Describe 'Pages and release presentation contract' {
             $Content | Should -Match '(?is)live.*testing was not\s+(?:>\s*)?executed'
             $Content | Should -Not -Match '(?i)\breissue\b|actions/runs/\d+'
             $Content | Should -Match '(?m)^## Related projects$'
-            $Content | Should -Match 'https://vartaxe\.github\.io/vartaxe/'
+            $Content | Should -Match 'https://vartaxe\.github\.io/'
             $Content | Should -Match 'https://vartaxe\.github\.io/ConfigMgr-OSD-CopyOSDLogToFileShare/'
         }
         $Landing = Get-Content -LiteralPath (Join-Path $script:Root 'index.md') -Raw

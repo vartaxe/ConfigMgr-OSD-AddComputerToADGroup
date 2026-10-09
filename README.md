@@ -84,7 +84,7 @@ See [authors and artwork notices](AUTHORS.md).
 ## Related projects
 
 - [Copy OSD Logs to File Share](https://github.com/vartaxe/ConfigMgr-OSD-CopyOSDLogToFileShare) - companion task-sequence utility ([documentation](https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/)).
-- [Claudio Mendes / vartaxe](https://vartaxe.github.io/vartaxe/) - profile and project directory ([GitHub](https://github.com/vartaxe)).
+- [vartaxe Windows endpoint automation](https://vartaxe.github.io/) - canonical project hub and maintainer profile ([GitHub](https://github.com/vartaxe)).
 
 ## License
 
