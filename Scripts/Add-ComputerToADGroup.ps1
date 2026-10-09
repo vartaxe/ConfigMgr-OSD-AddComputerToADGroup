@@ -558,10 +558,6 @@ function Test-PermanentDirectoryError {
         return ($Exception.Response.ResultCode -in $PermanentCodes)
     }
 
-    if ($Exception.Message -match "^AD group '.*' was not found\.$") {
-        return $true
-    }
-
     if ($Exception.Message -match "^AD group '.*' returned multiple results\.$") {
         return $true
     }
@@ -571,6 +567,16 @@ function Test-PermanentDirectoryError {
     }
 
     return $false
+}
+
+function Test-GroupNotFoundError {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.ErrorRecord]$ErrorRecord
+    )
+
+    $Exception = Get-DirectoryException -ErrorRecord $ErrorRecord
+    return ($Exception.Message -match "^AD group '.*' was not found\.$")
 }
 
 function Get-OperationResult {
@@ -590,6 +596,19 @@ function Get-OperationResult {
         Status = $Status
         Message = $Message
     }
+}
+
+function Get-PendingGroup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$GroupName,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Results
+    )
+
+    return $GroupName | Where-Object { -not $Results.ContainsKey($_) }
 }
 
 $ExitCode = 1
@@ -638,9 +657,11 @@ try {
     }
 
     $Results = @{}
+    $GroupNotFoundCount = @{}
+    $GroupHadOtherTransientFailure = @{}
 
     for ($Pass = 1; $Pass -le $RetryCount; $Pass++) {
-        $PendingGroups = @($RequestedGroups | Where-Object { -not $Results.ContainsKey($_) })
+        $PendingGroups = @(Get-PendingGroup -GroupName $RequestedGroups -Results $Results)
         if ($PendingGroups.Count -eq 0) {
             break
         }
@@ -660,7 +681,7 @@ try {
             }
 
             foreach ($DomainController in $DomainControllers) {
-                if (@($PendingGroups | Where-Object { -not $Results.ContainsKey($_) }).Count -eq 0) {
+                if (@(Get-PendingGroup -GroupName $PendingGroups -Results $Results).Count -eq 0) {
                     break
                 }
                 $Connection = $null
@@ -673,7 +694,7 @@ try {
                     $Computer = Find-LdapObject -Connection $Connection -SearchBase $NamingContext -Filter $ComputerFilter -Description "Computer account '$env:COMPUTERNAME'"
                     $ComputerDn = Get-LdapAttributeValue -Entry $Computer -Name 'distinguishedName'
 
-                    foreach ($CurrentGroup in @($PendingGroups | Where-Object { -not $Results.ContainsKey($_) })) {
+                    foreach ($CurrentGroup in @(Get-PendingGroup -GroupName $PendingGroups -Results $Results)) {
                         try {
                             $GroupSam = ConvertTo-LdapFilterValue -Value $CurrentGroup
                             $GroupFilter = '(&(objectCategory=group)(sAMAccountName={0}))' -f $GroupSam
@@ -697,7 +718,15 @@ try {
                             if (Test-PermanentDirectoryError -ErrorRecord $_) {
                                 $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedPermanent' -Message (Get-SafeErrorMessage -ErrorRecord $_)
                             }
+                            elseif (Test-GroupNotFoundError -ErrorRecord $_) {
+                                if (-not $GroupNotFoundCount.ContainsKey($CurrentGroup)) {
+                                    $GroupNotFoundCount[$CurrentGroup] = 0
+                                }
+                                $GroupNotFoundCount[$CurrentGroup]++
+                                Write-Log -Level 'WARN' -Message "Group is not visible on ${DomainController}; treating as replication-transient: Group=$CurrentGroup."
+                            }
                             else {
+                                $GroupHadOtherTransientFailure[$CurrentGroup] = $true
                                 Write-Log -Level 'WARN' -Message "Transient group failure on ${DomainController}: Group=$CurrentGroup; Error=$(Get-SafeErrorMessage -ErrorRecord $_)"
                             }
                         }
@@ -705,12 +734,15 @@ try {
                 }
                 catch {
                     if (Test-PermanentDirectoryError -ErrorRecord $_) {
-                        foreach ($CurrentGroup in @($PendingGroups | Where-Object { -not $Results.ContainsKey($_) })) {
+                        foreach ($CurrentGroup in @(Get-PendingGroup -GroupName $PendingGroups -Results $Results)) {
                             $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedPermanent' -Message (Get-SafeErrorMessage -ErrorRecord $_)
                         }
                         break
                     }
 
+                    foreach ($CurrentGroup in @(Get-PendingGroup -GroupName $PendingGroups -Results $Results)) {
+                        $GroupHadOtherTransientFailure[$CurrentGroup] = $true
+                    }
                     Write-Log -Level 'WARN' -Message "Transient DC failure on ${DomainController}: $(Get-SafeErrorMessage -ErrorRecord $_)"
                 }
                 finally {
@@ -721,10 +753,13 @@ try {
             }
         }
         catch {
+            foreach ($CurrentGroup in @(Get-PendingGroup -GroupName $PendingGroups -Results $Results)) {
+                $GroupHadOtherTransientFailure[$CurrentGroup] = $true
+            }
             Write-Log -Level 'WARN' -Message "Transient readiness failure: $(Get-SafeErrorMessage -ErrorRecord $_)"
         }
 
-        $RemainingGroups = @($RequestedGroups | Where-Object { -not $Results.ContainsKey($_) })
+        $RemainingGroups = @(Get-PendingGroup -GroupName $RequestedGroups -Results $Results)
         if (($RemainingGroups.Count -gt 0) -and ($Pass -lt $RetryCount) -and ($RetryDelaySeconds -gt 0)) {
             Start-Sleep -Seconds $RetryDelaySeconds
         }
@@ -732,7 +767,13 @@ try {
 
     foreach ($CurrentGroup in $RequestedGroups) {
         if (-not $Results.ContainsKey($CurrentGroup)) {
-            $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedTransient' -Message 'Retries exhausted.'
+            if ($GroupNotFoundCount.ContainsKey($CurrentGroup) -and
+                -not $GroupHadOtherTransientFailure.ContainsKey($CurrentGroup)) {
+                $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedPermanent' -Message 'Requested AD group was not found.'
+            }
+            else {
+                $Results[$CurrentGroup] = Get-OperationResult -Success $false -Status 'FailedTransient' -Message 'Retries exhausted.'
+            }
         }
 
         if ($Results[$CurrentGroup].Success) {

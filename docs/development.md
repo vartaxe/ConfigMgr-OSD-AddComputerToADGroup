@@ -66,3 +66,17 @@ PSScriptAnalyzer, Pester, version/tag, and checksum gates. After any file change
 normalize line endings and regenerate `CHECKSUMS.txt` last using the documented
 [release process](release-process.md). A banner-only change still changes source
 hashes and must not silently replace an already published release ZIP.
+
+## Bounded runtime cleanup
+
+`Get-PendingGroup` centralizes the unresolved-group predicate used at seven retry,
+controller, and failure boundaries. Each caller still materializes a fresh array
+at the same point: groups with any recorded result, including permanent failures,
+are excluded, while unresolved groups retain input order and case-insensitive
+hashtable matching. The helper does not mutate the input list or result map.
+
+The helper stays inside the standalone production script. Pure selector tests
+and existing mocked orchestration tests cover empty/singleton results, ordering,
+and changing completion state. Authentication, LDAP requests, resource disposal,
+diagnostics, delays, parameters, and exit codes are unchanged. No live Active
+Directory or ConfigMgr validation is claimed.

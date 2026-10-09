@@ -84,6 +84,39 @@ BeforeAll {
     }
 }
 
+Describe 'Pending group selection' {
+    It 'preserves unresolved group selection for <Case>' -Tag 'Cleanup' -ForEach @(
+        @{ Case = 'no groups'; Names = @(); Results = @{}; Expected = '' }
+        @{ Case = 'one pending group'; Names = @('Group-A'); Results = @{}; Expected = 'Group-A' }
+        @{ Case = 'input order'; Names = @('Group-B', 'Group-A'); Results = @{}; Expected = 'Group-B,Group-A' }
+        @{ Case = 'case-insensitive completed keys'; Names = @('Group-B', 'Group-A'); Results = @{ 'group-a' = $null }; Expected = 'Group-B' }
+        @{ Case = 'completed successes and permanent failures'; Names = @('Group-B', 'Group-A'); Results = @{
+                'Group-A' = [pscustomobject]@{ Success = $true }
+                'Group-B' = [pscustomobject]@{ Success = $false }
+            }; Expected = '' }
+    ) {
+        $Output = @(Get-PendingGroup -GroupName $Names -Results $Results)
+        ($Output -join ',') | Should -BeExactly $Expected
+        $ExpectedCount = if ($Expected -eq '') { 0 } else { $Expected.Split(',').Count }
+        $Output.Count | Should -Be $ExpectedCount
+        foreach ($Name in $Output) { $Name | Should -BeOfType [string] }
+    }
+
+    It 'rechecks completed results without mutating inputs or caching pending groups' -Tag 'Cleanup' {
+        $Names = @('Group-B', 'Group-A')
+        $Results = @{}
+        (Get-PendingGroup -GroupName $Names -Results $Results) -join ',' | Should -BeExactly 'Group-B,Group-A'
+        $Results.Count | Should -Be 0
+        $Results['Group-B'] = [pscustomobject]@{ Success = $false; Status = 'FailedPermanent' }
+        $Output = @(Get-PendingGroup -GroupName $Names -Results $Results)
+        $Output.Count | Should -Be 1
+        $Output[0] | Should -BeExactly 'Group-A'
+        $Names -join ',' | Should -BeExactly 'Group-B,Group-A'
+        $Results.Count | Should -Be 1
+        $Results['Group-B'].Status | Should -BeExactly 'FailedPermanent'
+    }
+}
+
 Describe 'Entry-point parameter validation' {
     BeforeAll {
         # Bind the actual production parameters without executing the Task Sequence entry point.
@@ -761,15 +794,36 @@ Describe 'Orchestration with mocked Task Sequence and LDAP boundaries' {
         $script:LogEntries -join "`n" | Should -Not -Match 'test-account|test-only-password'
     }
 
-    It 'does not retry a missing group but completes the other groups' {
+    It 'checks every DC and retry pass before making a missing group permanent' {
         Mock Find-LdapObject {
             if ($Description -eq "AD group 'Group-A'") { throw "AD group 'Group-A' was not found." }
             [pscustomobject]@{}
         }
         (Invoke-TestScript -GroupName @('Group-A', 'Group-B'))[-1] | Should -Be 1
-        Should -Invoke Find-LdapObject -Times 1 -Exactly -ParameterFilter { $Description -eq "AD group 'Group-A'" }
-        Should -Invoke Start-Sleep -Times 0 -Exactly
+        Should -Invoke Find-LdapObject -Times 6 -Exactly -ParameterFilter { $Description -eq "AD group 'Group-A'" }
+        Should -Invoke Find-LdapObject -Times 1 -Exactly -ParameterFilter { $Description -eq "AD group 'Group-B'" }
+        Should -Invoke Start-Sleep -Times 2 -Exactly
+        $script:LogEntries -join "`n" | Should -Match 'Group=Group-A; Result=FailedPermanent; Message=Requested AD group was not found\.'
         $script:LogEntries -join "`n" | Should -Match 'Group=Group-B; Result=AlreadyMember'
+    }
+
+    It 'fails over when a group has not replicated to the first DC' -Tag Regression {
+        $script:GroupLookups = 0
+        Mock Find-LdapObject {
+            if ($Description -eq "AD group 'Group-A'") {
+                $script:GroupLookups++
+                if ($script:GroupLookups -eq 1) { throw "AD group 'Group-A' was not found." }
+            }
+            [pscustomobject]@{}
+        }
+
+        (Invoke-TestScript -GroupName 'Group-A')[-1] | Should -Be 0
+
+        Should -Invoke Connect-LdapServer -Times 2 -Exactly
+        Should -Invoke Find-LdapObject -Times 2 -Exactly -ParameterFilter { $Description -eq "AD group 'Group-A'" }
+        Should -Invoke Start-Sleep -Times 0 -Exactly
+        $script:LogEntries -join "`n" | Should -Match 'replication-transient'
+        $script:LogEntries -join "`n" | Should -Match 'Group=Group-A; Result=AlreadyMember'
     }
 
     It 'does not retry a permanent delegated-permission failure' {
