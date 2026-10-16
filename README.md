@@ -9,6 +9,8 @@
 
 Add computer accounts to Active Directory groups during ConfigMgr OSD with verification, retries, compatibility modes, and CMTrace logging.
 
+**Claudio Mendes · Windows endpoint automation · [@vartaxe](https://github.com/vartaxe)**
+
 **Current version: 1.0.0.** This README follows `main`; downloads are versioned snapshots.
 
 [Documentation](https://vartaxe.github.io/ConfigMgr-OSD-AddComputerToADGroup/) | [Quick start](#quick-start) | [Deployment](docs/deployment.md) | [Compatibility](docs/compatibility.md) | [Security](SECURITY.md) | [Troubleshooting](docs/troubleshooting.md)
