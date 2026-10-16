@@ -11,6 +11,9 @@ when needed, and verifies the result on the same domain controller connection.
 > **Current version: 1.0.0.** This site follows `main`; the
 > [v1.0.0 release](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/releases/tag/v1.0.0)
 > is a versioned snapshot with its own [release notes](RELEASE-NOTES.md).
+> **`main` has unreleased script changes.** The release and public gist do not
+> include them; [compare v1.0.0 with main](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/compare/v1.0.0...main)
+> before choosing a deployment source and validate the exact revision.
 
 ## Before deployment
 
