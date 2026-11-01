@@ -247,7 +247,14 @@ def workspace_glob_matches(directory: str, pattern: str) -> bool:
 
 def npm_workspaces(repo: Path, npm: dict[str, set[str]],
                    cwd: Path = Path(".")) -> list[set[str]] | None:
-    """Resolve workspaces from the nearest package root containing the invocation cwd."""
+    """Resolve workspace packages from the nearest package root containing the cwd."""
+    directories = npm_workspace_directories(repo, npm, cwd)
+    return [npm[directory] for directory in directories] if directories is not None else None
+
+
+def npm_workspace_directories(repo: Path, npm: dict[str, set[str]],
+                              cwd: Path = Path(".")) -> list[str] | None:
+    """Return repository-relative workspace package directories for the cwd."""
     invocation_dir = (repo / cwd).resolve()
     repo_root = repo.resolve()
     for root in (invocation_dir, *invocation_dir.parents):
@@ -290,7 +297,7 @@ def npm_workspaces(repo: Path, npm: dict[str, set[str]],
                 for directory in selected):
             continue
         return [
-            npm[root_rel + "/" + directory if root_rel else directory]
+            root_rel + "/" + directory if root_rel else directory
             for directory in selected
         ]
     return None
@@ -326,6 +333,52 @@ def fenced_block_groups(text: str) -> list[list[tuple[int, str]]]:
         elif current is not None:
             current.append((i, markdown_blockquote_content(line, fence_depth)[1]))
     return groups
+
+
+def shell_line_continues(line: str) -> bool:
+    """Whether a terminal unquoted backslash joins the next physical shell line."""
+    end = len(line.rstrip())
+    slash_count = len(line[:end]) - len(line[:end].rstrip("\\"))
+    if not slash_count or slash_count % 2 == 0:
+        return False
+
+    content = line[:end - slash_count]
+    if strip_shell_comment(content) != content:
+        return False
+    quote = None
+    index = 0
+    while index < len(content):
+        char = content[index]
+        if char == "\\" and quote != "'":
+            index += 2
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in {'"', "'"}:
+            quote = char
+        index += 1
+    return quote != "'"
+
+
+def shell_logical_commands(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Join shell continuations while retaining each command's starting line."""
+    commands = []
+    start_line = None
+    parts = []
+    for line_number, line in lines:
+        if start_line is None:
+            start_line = line_number
+        if shell_line_continues(line):
+            parts.append(line.rstrip()[:-1] + " ")
+            continue
+        parts.append(line)
+        commands.append((start_line, "".join(parts)))
+        start_line = None
+        parts = []
+    if start_line is not None:
+        commands.append((start_line, "".join(parts)))
+    return commands
 
 
 def markdown_blockquote_content(line: str, depth: int | None = None) -> tuple[int, str]:
@@ -436,10 +489,10 @@ def npm_package_scripts(npm: dict[str, set[str]], cwd: Path) -> set[str]:
 
 def npm_workspace_package_scripts(
         repo: Path, npm: dict[str, set[str]], workspace_names: dict[str, set[str]],
-        selector: str) -> set[str] | None:
-    """Resolve a workspace selector by package directory or package name."""
+        selector: str, cwd: Path) -> set[str] | None:
+    """Resolve a workspace selector relative to npm's effective command directory."""
     target = Path(selector.replace("\\", "/"))
-    candidate = target if target.is_absolute() else repo / target
+    candidate = target if target.is_absolute() else repo / cwd / target
     try:
         directory = candidate.resolve().relative_to(repo.resolve()).as_posix()
     except ValueError:
@@ -447,7 +500,12 @@ def npm_workspace_package_scripts(
     if directory in npm:
         return npm[directory]
 
+    workspace_directories = npm_workspace_directories(repo, npm, cwd)
     matches = workspace_names.get(selector, set())
+    if workspace_directories is not None:
+        matches &= set(workspace_directories)
+    else:
+        return None
     if len(matches) == 1:
         return npm.get(next(iter(matches)))
     return None
@@ -800,7 +858,7 @@ def npm_commands_in_line(repo: Path, npm: dict[str, set[str]], line: str,
                 resolved = True
                 for selector in workspace_selectors:
                     scripts = npm_workspace_package_scripts(
-                        repo, npm, workspace_names or {}, selector)
+                        repo, npm, workspace_names or {}, selector, command_cwd)
                     if scripts is None:
                         resolved = False
                         break
@@ -1824,7 +1882,7 @@ def build(repo: Path, files: list[str], check_paths: bool = False) -> dict:
             script_cwd = Path(".")
             script_directory_stack: list[Path] = []
             explicit_script_directory_change = False
-            for lineno, line in block:
+            for lineno, line in shell_logical_commands(block):
                 npm_cwd, npm_calls = npm_commands_in_line(
                     repo, npm_scripts, line, npm_cwd, workspace_names,
                     npm_directory_stack)

@@ -668,6 +668,53 @@ continues inside this code span`
             self.assertEqual(kinds.count("missing-script"), 1)
             self.assertEqual(kinds.count("missing-make-target"), 1)
 
+    def test_workspace_selectors_and_continued_commands_use_effective_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            tools = repo / "tools"
+            widget = tools / "packages" / "widget"
+            widget.mkdir(parents=True)
+            (tools / "package.json").write_text(
+                '{"scripts": {"build": "build"}, "workspaces": ["packages/*"]}\n',
+                encoding="utf-8")
+            (widget / "package.json").write_text(
+                '{"name": "@scope/widget", "scripts": {"other": "other"}}\n',
+                encoding="utf-8")
+            (repo / "Makefile").write_text("root-target:\n", encoding="utf-8")
+            (tools / "Makefile").write_text("present-target:\n", encoding="utf-8")
+            doc = repo / "README.md"
+            doc.write_text(
+                "```sh\n"
+                "cd tools\n"
+                "npm run build --workspace packages/widget\n"
+                "npm run build \\\n"
+                "  --prefix packages --workspace @scope/widget\n"
+                "npm run build --prefix packages --workspace widget\n"
+                "make \\\n"
+                "  -C . absent-target\n"
+                "python \\\n"
+                "  scripts/missing.py\n"
+                "```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, [
+                "tools/package.json", "tools/packages/widget/package.json",
+                "Makefile", "tools/Makefile", "README.md",
+            ])
+            findings = result["findings"]
+
+            self.assertEqual(
+                [finding["line"] for finding in findings
+                 if finding["kind"] == "missing-script"],
+                [3, 4, 6])
+            self.assertEqual(
+                [finding["line"] for finding in findings
+                 if finding["kind"] == "missing-make-target"],
+                [7])
+            self.assertEqual(
+                [finding["line"] for finding in findings
+                 if finding["kind"] == "missing-script-file"],
+                [9])
+
     def test_external_cd_and_dynamic_npm_prefix_skip_repository_checks(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -1694,7 +1741,8 @@ npm run build
             api = repo / "packages" / "api"
             web.mkdir(parents=True)
             api.mkdir(parents=True)
-            (repo / "package.json").write_text('{}\n', encoding="utf-8")
+            (repo / "package.json").write_text(
+                '{"workspaces": ["packages/*"]}\n', encoding="utf-8")
             (web / "package.json").write_text(
                 '{"name": "@acme/web", "scripts": {"build": "build"}}\n',
                 encoding="utf-8")
