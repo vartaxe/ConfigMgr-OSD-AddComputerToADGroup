@@ -444,18 +444,33 @@ exit /b %ERRORLEVEL%
 
 :main
     call :parse_args %*
+    if "%_HELP%"=="1" exit /b 0
+    if errorlevel 1 exit /b 2
     if not defined _TARGET (
         echo ERROR: --target is required. 1>&2
         call :usage
         exit /b 1
     )
-    echo Processing: %_TARGET%
+    echo Processing: "%_TARGET%"
     exit /b 0
 
 :parse_args
     if "%~1"=="" exit /b 0
-    if /i "%~1"=="--target" set "_TARGET=%~2" & shift
-    if /i "%~1"=="--help"   call :usage & exit /b 0
+    if /i "%~1"=="--help" (
+        set "_HELP=1"
+        call :usage
+        exit /b 0
+    )
+    if /i "%~1"=="--target" (
+        if "%~2"=="" (
+            echo ERROR: --target requires a value. 1>&2
+            exit /b 2
+        )
+        set "_TARGET=%~2"
+        shift
+        shift
+        goto :parse_args
+    )
     shift
     goto :parse_args
 
