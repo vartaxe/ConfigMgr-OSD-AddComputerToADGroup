@@ -909,6 +909,23 @@ continues inside this code span`
                 "missing-script-file",
                 {finding["kind"] for finding in result["findings"]})
 
+    def test_shell_continuation_preserves_path_tokens(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "buildtask.py").write_text("print('ok')\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\npython scripts/build\\\n"
+                "task.py\n```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(
+                repo, ["scripts/buildtask.py", "README.md"])
+
+            self.assertNotIn(
+                "missing-script-file",
+                {finding["kind"] for finding in result["findings"]})
+
     def test_list_files_preserves_filename_whitespace_and_bytes(self):
         with patch.object(DOCS_DRIFT.shutil, "which", return_value="git"), \
                 patch.object(DOCS_DRIFT.subprocess, "run") as run:

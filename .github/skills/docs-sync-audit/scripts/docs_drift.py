@@ -370,7 +370,7 @@ def shell_logical_commands(lines: list[tuple[int, str]]) -> list[tuple[int, str]
         if start_line is None:
             start_line = line_number
         if shell_line_continues(line):
-            parts.append(line.rstrip()[:-1] + " ")
+            parts.append(line.rstrip()[:-1])
             continue
         parts.append(line)
         commands.append((start_line, "".join(parts)))
