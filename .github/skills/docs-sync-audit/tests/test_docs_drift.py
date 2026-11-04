@@ -508,6 +508,34 @@ continues inside this code span`
                 env_names,
                 {"API_TOKEN": ["main.py:6"], "PORT": ["main.py:7"]})
 
+    def test_python_getenv_keyword_arguments_include_import_aliases(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "main.py").write_text(
+                "import os\n"
+                "from os import getenv as read_env\n"
+                "token = os.getenv(key='API_TOKEN')\n"
+                "other = read_env(key='OTHER_TOKEN')\n",
+                encoding="utf-8")
+            (repo / "README.md").write_text(
+                "Configure `API_TOKEN` and `OTHER_TOKEN` before running the service.\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["main.py", "README.md"])
+
+            self.assertNotIn(
+                "documented-unused-env",
+                {finding["kind"] for finding in result["findings"]})
+            self.assertNotIn(
+                "undocumented-env",
+                {finding["kind"] for finding in result["findings"]})
+            self.assertEqual(
+                DOCS_DRIFT.env_names_from_code(repo, ["main.py"]),
+                {
+                    "API_TOKEN": ["main.py:3"],
+                    "OTHER_TOKEN": ["main.py:4"],
+                })
+
     def test_python_environment_augmented_assignment_is_a_read(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -925,6 +953,14 @@ continues inside this code span`
             self.assertNotIn(
                 "missing-script-file",
                 {finding["kind"] for finding in result["findings"]})
+
+    def test_shell_escaped_trailing_space_does_not_continue(self):
+        lines = [
+            (1, r"python scripts/build\ "),
+            (2, "echo done"),
+        ]
+
+        self.assertEqual(DOCS_DRIFT.shell_logical_commands(lines), lines)
 
     def test_list_files_preserves_filename_whitespace_and_bytes(self):
         with patch.object(DOCS_DRIFT.shutil, "which", return_value="git"), \

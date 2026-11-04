@@ -337,7 +337,7 @@ def fenced_block_groups(text: str) -> list[list[tuple[int, str]]]:
 
 def shell_line_continues(line: str) -> bool:
     """Whether a terminal unquoted backslash joins the next physical shell line."""
-    end = len(line.rstrip())
+    end = len(line)
     slash_count = len(line[:end]) - len(line[:end].rstrip("\\"))
     if not slash_count or slash_count % 2 == 0:
         return False
@@ -1663,7 +1663,7 @@ def python_env_reads(text: str) -> list[tuple[str, int]]:
                 key = target.slice
                 if isinstance(key, ast.Constant) and isinstance(key.value, str):
                     found.append((key.value, node.lineno))
-        elif isinstance(node, ast.Call) and node.args:
+        elif isinstance(node, ast.Call):
             function = node.func
             is_getenv = (
                 isinstance(function, ast.Name)
@@ -1680,7 +1680,12 @@ def python_env_reads(text: str) -> list[tuple[str, int]]:
                 and environment_expression(function.value)
             )
             if is_getenv or is_environ_get:
-                name = node.args[0]
+                name = node.args[0] if node.args else None
+                if is_getenv and name is None:
+                    name = next(
+                        (keyword.value for keyword in node.keywords if keyword.arg == "key"),
+                        None,
+                    )
                 if isinstance(name, ast.Constant) and isinstance(name.value, str):
                     found.append((name.value, node.lineno))
         elif isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load):
